@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline';
+  variant?: 'primary' | 'secondary' | 'outline' | 'glass';
   className?: string;
   isLoading?: boolean;
 }
@@ -13,12 +13,13 @@ export const Button: React.FC<ButtonProps> = ({
   isLoading,
   ...props 
 }) => {
-  const baseStyles = "px-8 py-3 rounded-full font-bold transition-all duration-300 flex items-center justify-center gap-2 transform active:scale-95";
+  const baseStyles = "px-8 py-4 rounded-full font-bold transition-all duration-300 flex items-center justify-center gap-2 transform active:scale-95 relative overflow-hidden";
   
   const variants = {
-    primary: "bg-[#FFD700] text-black hover:bg-[#FFED4D] hover:shadow-[0_0_20px_rgba(255,215,0,0.4)]",
-    secondary: "bg-[#00E3FF] text-black hover:bg-[#33Eaff] hover:shadow-[0_0_20px_rgba(0,227,255,0.4)]",
-    outline: "border-2 border-white/20 text-white hover:border-white hover:bg-white/5"
+    primary: "bg-[#FFD700] text-black hover:bg-[#FFE033] hover:shadow-[0_0_30px_rgba(255,215,0,0.5)] border border-[#FFD700]",
+    secondary: "bg-[#00E3FF] text-black hover:bg-[#33EAFF] hover:shadow-[0_0_30px_rgba(0,227,255,0.5)] border border-[#00E3FF]",
+    outline: "border border-white/30 text-white hover:bg-white/10 hover:border-white",
+    glass: "glass-panel text-white hover:bg-white/10 border border-white/20 hover:border-white/40"
   };
 
   return (
@@ -33,7 +34,7 @@ export const Button: React.FC<ButtonProps> = ({
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
       )}
-      {children}
+      <span className="relative z-10 flex items-center gap-2">{children}</span>
     </button>
   );
 };

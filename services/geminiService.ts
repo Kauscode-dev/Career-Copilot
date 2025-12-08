@@ -1,9 +1,6 @@
 import { GoogleGenAI, Schema } from "@google/genai";
 import { CareerPixelResponse } from "../types";
 
-// Note: In a real production app, ensure strict type safety for the schema.
-// Here we define the response schema for Gemini to ensure JSON output.
-
 const careerPixelSchema: Schema = {
   type: "OBJECT",
   properties: {
@@ -54,14 +51,35 @@ const careerPixelSchema: Schema = {
         skills: { type: "ARRAY", items: { type: "STRING" } },
         certifications: { type: "ARRAY", items: { type: "STRING" } },
         extras: { type: "ARRAY", items: { type: "STRING" } }
-      }
+      },
+      required: ["name"]
     },
     ats_audit: {
       type: "OBJECT",
       properties: {
         score: { type: "NUMBER" },
         verdict: { type: "STRING" },
-        critical_fixes: { type: "ARRAY", items: { type: "STRING" } },
+        score_breakdown: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              category: { type: "STRING", description: "e.g. Impact, Keywords, Format" },
+              score: { type: "NUMBER" },
+              feedback: { type: "STRING" }
+            }
+          }
+        },
+        critical_fixes: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              section: { type: "STRING" },
+              fix: { type: "STRING" }
+            }
+          }
+        },
         formatting_tips: { type: "ARRAY", items: { type: "STRING" } },
         keyword_gaps: { type: "ARRAY", items: { type: "STRING" } }
       },
@@ -74,7 +92,8 @@ const careerPixelSchema: Schema = {
         weaknesses: { type: "ARRAY", items: { type: "STRING" } },
         opportunities: { type: "ARRAY", items: { type: "STRING" } },
         threats: { type: "ARRAY", items: { type: "STRING" } }
-      }
+      },
+      required: ["strengths", "weaknesses", "opportunities", "threats"]
     },
     career_map: {
       type: "OBJECT",
@@ -92,7 +111,8 @@ const careerPixelSchema: Schema = {
             project_gaps: { type: "ARRAY", items: { type: "STRING" } }
           }
         }
-      }
+      },
+      required: ["best_fit_role", "match_percentage", "salary_range", "why_it_fits", "top_companies", "gap_analysis"]
     },
     prep_roadmap: {
       type: "ARRAY",
@@ -107,27 +127,37 @@ const careerPixelSchema: Schema = {
         }
       }
     }
-  }
+  },
+  required: ["user_persona", "parsed_data", "ats_audit", "swot_analysis", "career_map", "prep_roadmap"]
 };
 
 const SYSTEM_INSTRUCTION = `
 YOUR PRIMARY MISSION
-Transform cold resume text + warm user aspirations into a hyper-personalized career blueprint that feels emotionally intelligent, analytically rigorous, and immediately actionable.
+Transform cold resume text + warm user aspirations into a hyper-personalized career blueprint.
+Style: Liquid, Premium, Raw, Honest, Gen-Z.
 
-YOUR TONE & STYLE
-Direct + Energetic: Clean sentences, high clarity.
-Human + Insightful: Reveal patterns about who they are as a person.
-Kind but Unfiltered: Encourage, but do not sugarcoat weaknesses.
-Zero Corporate Buzzwords: Never use vague nonsense like "synergy," "leveraging cross-functional alignment," etc.
-Explain WHY: Every insight must be justified based on resume or aspirations.
+1. PSYCHOANALYSIS (Deep, Raw, Emotional)
+   - Do NOT just summarize skills. Look into their soul.
+   - What drives them? What are they afraid of?
+   - How do they make decisions? (Data vs Gut)
+   - The psych_profile string must be a substantial paragraph that feels like a therapy session for their career. It should be brutally honest yet empowering.
 
-YOUR ANALYTICAL RESPONSIBILITIES
-1. Parse & Extract: Pull meaningful info (Contact, Edu, Exp, Skills, etc).
-2. Psychoanalysis: Identify hidden patterns, work style, cognitive strengths, and drivers.
-3. ATS Audit: Score the resume (0-100), identify keyword gaps, and formatting issues.
-4. SWOT: Strengths, Weaknesses, Opportunities, Threats.
-5. Career Map: Identify best fit role, match %, salary, and gap analysis.
-6. Preparation Roadmap: A 2-week tactical plan with daily tasks and deliverables.
+2. ATS AUDIT (Surgical Precision)
+   - Score out of 100.
+   - Provide a score_breakdown (e.g., "Impact Metrics", "Keyword Density", "Formatting", "Action Verbs") with individual scores (0-100) and specific feedback.
+   - For critical_fixes, you MUST provide specific line-by-line feedback. 
+     Example: { section: "Experience - Uber", fix: "Change 'Helped with marketing' to 'Spearheaded go-to-market strategy resulting in 20% growth'." }
+
+3. SWOT ANALYSIS
+   - Strengths: What makes them dangerous (in a good way)?
+   - Weaknesses: What will get them rejected? Be harsh but constructive.
+   - Opportunities: What specific niche or role can they dominate?
+   - Threats: AI, market saturation, skill obsolescence.
+
+4. ROADMAP (Actionable)
+   - Resources must be specific titles of books, courses, or tools that can be searched.
+
+Be direct. Be insightful. Be cool.
 `;
 
 export const analyzeCareer = async (resumeText: string, aspirations: string): Promise<CareerPixelResponse> => {
@@ -146,7 +176,7 @@ export const analyzeCareer = async (resumeText: string, aspirations: string): Pr
     USER ASPIRATIONS:
     ${aspirations}
 
-    Please analyze the above resume and aspirations to generate a CareerPixel profile.
+    Analyze this. Give me the raw truth.
   `;
 
   try {

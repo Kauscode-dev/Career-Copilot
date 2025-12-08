@@ -14,6 +14,7 @@
         background-color: #000000;
         color: #ffffff;
         -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
       }
       /* Custom Scrollbar */
       ::-webkit-scrollbar {
@@ -29,11 +30,29 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #555;
       }
-      .gold-glow {
-        box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
+      
+      /* Liquid Animation */
+      .liquid-blob {
+        position: absolute;
+        filter: blur(80px);
+        z-index: -1;
+        opacity: 0.6;
+        animation: float 10s ease-in-out infinite;
       }
-      .text-glow {
-        text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+      
+      @keyframes float {
+        0% { transform: translate(0, 0) scale(1); }
+        33% { transform: translate(30px, -50px) scale(1.1); }
+        66% { transform: translate(-20px, 20px) scale(0.9); }
+        100% { transform: translate(0, 0) scale(1); }
+      }
+
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
       }
     </style>
   <script type="importmap">

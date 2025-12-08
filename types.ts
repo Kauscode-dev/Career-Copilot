@@ -37,7 +37,8 @@ export interface UserPersona {
 export interface AtsAudit {
   score: number;
   verdict: string;
-  critical_fixes: string[];
+  score_breakdown: { category: string; score: number; feedback: string }[];
+  critical_fixes: { section: string; fix: string }[];
   formatting_tips: string[];
   keyword_gaps: string[];
 }
@@ -62,11 +63,6 @@ export interface CareerMap {
   why_it_fits: string;
   top_companies: string[];
   gap_analysis: GapAnalysis;
-}
-
-export interface DailyTask {
-  day: string;
-  task: string;
 }
 
 export interface WeekPlan {

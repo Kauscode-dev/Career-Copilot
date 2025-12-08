@@ -6,17 +6,19 @@ import {
   Target, 
   ChevronRight, 
   Sparkles, 
-  Layout, 
   FileText, 
   Map, 
   ListTodo,
   AlertTriangle,
   CheckCircle2,
-  Briefcase,
   TrendingUp,
   User,
   ShieldAlert,
-  Loader2
+  Loader2,
+  ExternalLink,
+  Zap,
+  BarChart2,
+  Search
 } from 'lucide-react';
 import { Button } from './components/Button';
 import { Card } from './components/Card';
@@ -24,7 +26,6 @@ import { CircularProgress } from './components/ProgressBar';
 import { analyzeCareer } from './services/geminiService';
 import { extractTextFromPDF } from './services/pdfService';
 import { CareerPixelResponse, ViewState } from './types';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 function App() {
   const [view, setView] = useState<ViewState>(ViewState.LANDING);
@@ -74,7 +75,6 @@ function App() {
         setIsParsingPdf(false);
       }
     } else {
-      // Basic text reading for .txt or .md
       const reader = new FileReader();
       reader.onload = (event) => {
         const text = event.target?.result as string;
@@ -84,41 +84,49 @@ function App() {
     }
   };
 
+  const LiquidBackground = () => (
+    <>
+      <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 bg-black">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#00E3FF] rounded-full mix-blend-screen opacity-20 blur-[120px] animate-blob" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#FFD700] rounded-full mix-blend-screen opacity-10 blur-[120px] animate-blob animation-delay-2000" />
+        <div className="absolute top-[40%] left-[40%] w-[40%] h-[40%] bg-purple-600 rounded-full mix-blend-screen opacity-10 blur-[120px] animate-blob animation-delay-4000" />
+      </div>
+    </>
+  );
+
   // --- Views ---
 
   const renderLanding = () => (
     <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden p-6 text-center">
-      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(20,20,20,1)_0%,rgba(0,0,0,1)_100%)] -z-10" />
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#FFD700] opacity-[0.03] rounded-full blur-[100px]" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#00E3FF] opacity-[0.03] rounded-full blur-[100px]" />
+      <LiquidBackground />
 
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="max-w-4xl mx-auto space-y-8"
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="max-w-5xl mx-auto space-y-10 relative z-10"
       >
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm text-[#FFD700] mb-4">
-          <Sparkles size={16} />
-          <span>AI-Powered Career Intelligence</span>
+        <div className="inline-flex items-center gap-2 px-6 py-2 rounded-full glass-panel border border-white/20 text-sm font-medium tracking-wide mb-4">
+          <Sparkles size={14} className="text-[#FFD700]" />
+          <span className="text-gray-200">AI-Powered Career Intelligence v2.5</span>
         </div>
         
-        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.1]">
-          Reimagining Your <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FFD700] to-[#FFCD00]">Career</span> Through <span className="italic font-serif font-light text-[#00E3FF]">AI</span>
+        <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[1] text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 drop-shadow-2xl">
+          Career<span className="text-[#FFD700]">Pixel</span>
         </h1>
-
-        <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-          Stop guessing. Get a psychological breakdown of your resume, 
-          an unfiltered ATS audit, and a hyper-personalized roadmap.
+        
+        <p className="text-2xl md:text-3xl font-light text-gray-400 max-w-3xl mx-auto leading-relaxed">
+          The <span className="text-[#00E3FF]">raw truth</span> about your resume.
+          <br />
+          The <span className="text-[#FFD700]">psychological map</span> to your dream job.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
-          <Button onClick={() => setView(ViewState.INPUT)} className="w-full sm:w-auto text-lg px-10 py-4">
-            Analyze My Career
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-8">
+          <Button onClick={() => setView(ViewState.INPUT)} className="w-full sm:w-auto text-lg px-12 py-5 shadow-[0_0_40px_-10px_rgba(255,215,0,0.5)]">
+            Analyze My Profile
             <ChevronRight size={20} />
           </Button>
-          <Button variant="outline" className="w-full sm:w-auto text-lg px-10 py-4" onClick={() => window.open('https://ai.google.dev/', '_blank')}>
+          <Button variant="glass" className="w-full sm:w-auto text-lg px-12 py-5" onClick={() => window.open('https://ai.google.dev/', '_blank')}>
             Powered by Gemini
           </Button>
         </div>
@@ -127,30 +135,35 @@ function App() {
   );
 
   const renderInput = () => (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 max-w-5xl mx-auto">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 max-w-6xl mx-auto relative">
+      <LiquidBackground />
+      
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full grid md:grid-cols-2 gap-12"
+        transition={{ duration: 0.5 }}
+        className="w-full grid md:grid-cols-2 gap-10"
       >
         <div className="space-y-6">
-          <h2 className="text-4xl font-bold">Tell us your story.</h2>
-          <p className="text-gray-400">Upload your resume (PDF/TXT) or paste the raw text. Then, tell us where you actually want to go.</p>
+          <h2 className="text-5xl font-black tracking-tight text-white">Let's decode <br/> your DNA.</h2>
+          <p className="text-xl text-gray-400 font-light">
+            Upload your resume and tell us your wildest ambitions. 
+            We'll handle the psychology.
+          </p>
           
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-gray-300">Resume Content</label>
+          <div className="glass-panel p-1 rounded-2xl">
             <div className="relative group">
               <textarea 
-                value={isParsingPdf ? "Extracting text from PDF..." : resumeText}
+                value={isParsingPdf ? "Scanning document structure..." : resumeText}
                 onChange={(e) => setResumeText(e.target.value)}
                 disabled={isParsingPdf}
-                placeholder="Paste your full resume text here..."
-                className={`w-full h-64 bg-[#111] border border-white/10 rounded-xl p-4 focus:border-[#FFD700] focus:ring-1 focus:ring-[#FFD700] transition-all outline-none resize-none font-mono text-sm text-gray-300 ${isParsingPdf ? 'opacity-50 cursor-wait' : ''}`}
+                placeholder="Paste resume text or upload PDF..."
+                className={`w-full h-80 bg-black/20 rounded-xl p-6 transition-all outline-none resize-none font-mono text-sm text-gray-300 placeholder-gray-600 focus:bg-black/40 ${isParsingPdf ? 'opacity-50' : ''}`}
               />
-              <div className="absolute top-4 right-4">
-                <label className={`cursor-pointer p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors flex items-center gap-2 text-xs ${isParsingPdf ? 'pointer-events-none opacity-80' : ''}`}>
+              <div className="absolute bottom-6 right-6">
+                <label className={`cursor-pointer px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg hover:bg-white/20 transition-all flex items-center gap-2 text-xs font-medium border border-white/10 ${isParsingPdf ? 'pointer-events-none opacity-80' : ''}`}>
                   {isParsingPdf ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
-                  <span>{isParsingPdf ? 'Parsing...' : 'Upload PDF'}</span>
+                  <span>{isParsingPdf ? 'Processing...' : 'Upload PDF'}</span>
                   <input 
                     type="file" 
                     accept=".pdf,.txt,.md" 
@@ -165,34 +178,25 @@ function App() {
         </div>
 
         <div className="space-y-6 flex flex-col justify-between">
-           <div className="space-y-4">
-            <label className="block text-sm font-medium text-gray-300">Your Aspirations</label>
+           <div className="glass-panel p-1 rounded-2xl h-full flex flex-col">
+             <div className="p-6 pb-2">
+                <label className="block text-sm font-bold text-[#00E3FF] mb-2 uppercase tracking-wider">Your Ambitions</label>
+             </div>
             <textarea 
               value={aspirations}
               onChange={(e) => setAspirations(e.target.value)}
-              placeholder="I want to pivot into Product Management in Fintech... I love fast-paced environments... I want to earn $150k+..."
-              className="w-full h-40 bg-[#111] border border-white/10 rounded-xl p-4 focus:border-[#00E3FF] focus:ring-1 focus:ring-[#00E3FF] transition-all outline-none resize-none text-sm text-gray-300"
+              placeholder="Be specific. 'I want to lead product at a Series B Fintech' or 'I want to switch from Sales to Engineering'..."
+              className="w-full flex-grow bg-transparent p-6 pt-0 outline-none resize-none text-lg text-gray-200 placeholder-gray-600 leading-relaxed"
             />
-          </div>
-
-          <div className="bg-[#111] p-6 rounded-xl border border-white/5">
-             <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-               <Brain className="text-[#FFD700]" size={18} />
-               How it works
-             </h3>
-             <ul className="text-sm text-gray-500 space-y-2">
-               <li>• We extract your psychological profile from your writing style.</li>
-               <li>• We match your skills against real-market demands.</li>
-               <li>• We build a gap-analysis bridge to your dream role.</li>
-             </ul>
           </div>
 
           <Button 
             onClick={handleAnalyze} 
             disabled={!resumeText.trim() || isParsingPdf}
-            className="w-full py-4 text-lg"
+            className="w-full py-5 text-xl shadow-[0_0_30px_rgba(255,215,0,0.3)]"
           >
-            Generate CareerPixel
+            Start Analysis
+            <Zap size={20} className="fill-black" />
           </Button>
         </div>
       </motion.div>
@@ -201,31 +205,38 @@ function App() {
 
   const renderProcessing = () => {
     const steps = [
-      "Deconstructing resume DNA...",
-      "Analyzing psychological markers...",
-      "Mapping market opportunities...",
-      "Building your strategic roadmap..."
+      "Deconstructing resume syntax...",
+      "Extracting psychological markers...",
+      "Calculating ATS probabilities...",
+      "Synthesizing career roadmap..."
     ];
 
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-         <motion.div 
-           animate={{ rotate: 360 }}
-           transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-           className="w-24 h-24 border-t-4 border-[#FFD700] border-r-4 border-[#00E3FF] rounded-full mb-8 filter drop-shadow-[0_0_15px_rgba(255,215,0,0.5)]"
-         />
-         <h2 className="text-2xl font-bold mb-2">Analyzing...</h2>
-         <p className="text-[#00E3FF] font-mono animate-pulse">{steps[loadingStep]}</p>
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center relative">
+         <LiquidBackground />
+         <div className="relative">
+            <div className="absolute inset-0 bg-[#FFD700] blur-[40px] opacity-20 rounded-full animate-pulse"></div>
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              className="w-32 h-32 border-4 border-transparent border-t-[#FFD700] border-l-[#00E3FF] rounded-full relative z-10"
+            />
+         </div>
+         <h2 className="text-3xl font-black mt-10 mb-4 tracking-tight">Processing Profile</h2>
+         <p className="text-[#00E3FF] font-mono text-sm tracking-widest uppercase">{steps[loadingStep]}</p>
       </div>
     );
   };
 
   const renderError = () => (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
-      <AlertTriangle className="text-red-500 mb-4" size={48} />
-      <h2 className="text-2xl font-bold mb-4">Analysis Failed</h2>
-      <p className="text-gray-400 mb-8">{errorMsg}</p>
-      <Button onClick={() => setView(ViewState.INPUT)}>Try Again</Button>
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto relative">
+      <LiquidBackground />
+      <div className="glass-panel p-8 rounded-3xl border border-red-500/30">
+        <AlertTriangle className="text-red-500 mb-6 mx-auto" size={48} />
+        <h2 className="text-3xl font-bold mb-4">Analysis Interrupted</h2>
+        <p className="text-gray-400 mb-8 leading-relaxed">{errorMsg}</p>
+        <Button onClick={() => setView(ViewState.INPUT)} variant="outline">Try Again</Button>
+      </div>
     </div>
   );
 
@@ -234,189 +245,287 @@ function App() {
 
     const tabs = [
       { id: 'PERSONA', icon: User, label: 'Persona' },
-      { id: 'ATS', icon: FileText, label: 'ATS Score' },
+      { id: 'ATS', icon: FileText, label: 'ATS Audit' },
       { id: 'MAP', icon: Map, label: 'Career Map' },
       { id: 'ROADMAP', icon: ListTodo, label: 'Roadmap' },
     ];
 
     return (
-      <div className="min-h-screen bg-black pb-20">
+      <div className="min-h-screen pb-20 relative">
+        <LiquidBackground />
+        
         {/* Header */}
-        <header className="border-b border-white/10 bg-black/50 backdrop-blur-md sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2 font-bold text-xl">
-              <div className="w-8 h-8 bg-gradient-to-br from-[#FFD700] to-orange-500 rounded-lg flex items-center justify-center text-black">CP</div>
-              CareerPixel
+        <header className="sticky top-0 z-50 glass-panel border-b border-white/5">
+          <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div className="flex items-center gap-3 font-bold text-xl tracking-tight cursor-pointer" onClick={() => setView(ViewState.LANDING)}>
+              <div className="w-10 h-10 bg-gradient-to-tr from-[#FFD700] to-orange-400 rounded-xl flex items-center justify-center text-black shadow-lg shadow-orange-500/20">CP</div>
+              <span className="hidden md:block">CareerPixel</span>
             </div>
-            <div className="flex items-center gap-4">
-               <div className="hidden md:block text-sm text-gray-400">{data.parsed_data.name || 'User'}</div>
-               <div className="w-8 h-8 rounded-full bg-gray-800 border border-white/10" />
+            <div className="flex items-center gap-6">
+               <div className="hidden md:flex flex-col items-end">
+                 <span className="text-sm font-bold text-white">{data?.parsed_data?.name || 'Anonymous User'}</span>
+                 <span className="text-xs text-gray-400 uppercase tracking-wider">{data?.user_persona?.archetype || 'Explorer'}</span>
+               </div>
+               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-black border border-white/20 flex items-center justify-center">
+                  <User size={18} className="text-gray-400"/>
+               </div>
             </div>
           </div>
         </header>
 
         {/* Navigation */}
-        <div className="max-w-7xl mx-auto px-6 py-8">
-           <div className="flex overflow-x-auto gap-4 pb-4 border-b border-white/10 mb-8 no-scrollbar">
-             {tabs.map(tab => (
-               <button
-                 key={tab.id}
-                 onClick={() => setActiveTab(tab.id as any)}
-                 className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all whitespace-nowrap ${
-                   activeTab === tab.id 
-                     ? 'bg-white text-black' 
-                     : 'bg-[#111] text-gray-400 hover:text-white border border-white/5'
-                 }`}
-               >
-                 <tab.icon size={16} />
-                 {tab.label}
-               </button>
-             ))}
+        <div className="max-w-7xl mx-auto px-6 py-10">
+           <div className="flex justify-center md:justify-start mb-12">
+             <div className="glass-panel p-1.5 rounded-full inline-flex gap-1 overflow-x-auto max-w-full">
+               {tabs.map(tab => (
+                 <button
+                   key={tab.id}
+                   onClick={() => setActiveTab(tab.id as any)}
+                   className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all whitespace-nowrap ${
+                     activeTab === tab.id 
+                       ? 'bg-white text-black shadow-lg' 
+                       : 'text-gray-400 hover:text-white hover:bg-white/5'
+                   }`}
+                 >
+                   <tab.icon size={16} strokeWidth={2.5} />
+                   {tab.label}
+                 </button>
+               ))}
+             </div>
            </div>
 
            <AnimatePresence mode="wait">
              <motion.div
                key={activeTab}
-               initial={{ opacity: 0, y: 10 }}
-               animate={{ opacity: 1, y: 0 }}
-               exit={{ opacity: 0, y: -10 }}
-               transition={{ duration: 0.2 }}
+               initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+               animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+               exit={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
+               transition={{ duration: 0.4, ease: "circOut" }}
              >
                {activeTab === 'PERSONA' && (
-                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <Card className="lg:col-span-2" accent="gold" title="Identity Snapshot">
-                      <h1 className="text-3xl md:text-5xl font-extrabold mb-6 leading-tight">
-                        {data.user_persona.headline}
+                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    {/* Hero Identity */}
+                    <Card className="lg:col-span-8" accent="gold" title="Identity Snapshot">
+                      <h1 className="text-3xl md:text-5xl font-black mb-8 leading-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
+                        {data?.user_persona?.headline || 'Your Career Identity'}
                       </h1>
-                      <div className="prose prose-invert max-w-none text-gray-300">
-                        <p className="text-lg leading-relaxed border-l-2 border-[#FFD700] pl-6 italic">
-                          "{data.user_persona.psych_profile}"
+                      <div className="glass-panel p-8 rounded-2xl bg-black/20 border border-white/5">
+                        <p className="text-lg md:text-xl leading-relaxed text-gray-200 font-light italic">
+                          "{data?.user_persona?.psych_profile || 'Analyzing personality...'}"
                         </p>
                       </div>
                     </Card>
-                    <Card accent="turquoise" title="Your Archetype">
-                      <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                        <div className="w-24 h-24 bg-[#00E3FF]/10 rounded-full flex items-center justify-center mb-6">
-                          <Brain className="text-[#00E3FF]" size={40} />
+
+                    {/* Archetype */}
+                    <Card className="lg:col-span-4" accent="turquoise">
+                      <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                        <div className="relative mb-6">
+                           <div className="absolute inset-0 bg-[#00E3FF] blur-xl opacity-30 animate-pulse"></div>
+                           <Brain className="text-[#00E3FF] relative z-10" size={64} />
                         </div>
-                        <h2 className="text-3xl font-bold text-white mb-2">{data.user_persona.archetype}</h2>
-                        <p className="text-sm text-gray-400">Based on your decision patterns and writing style.</p>
+                        <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-wide">{data?.user_persona?.archetype || 'Explorer'}</h2>
+                        <div className="h-1 w-12 bg-[#00E3FF] rounded-full my-4"></div>
+                        <p className="text-sm text-gray-400">Your decision-making patterns and writing style suggest this is your dominant professional DNA.</p>
                       </div>
                     </Card>
-                    <Card title="Strengths & Weaknesses (SWOT)" className="lg:col-span-3">
-                      <div className="grid md:grid-cols-2 gap-8">
-                        <div>
-                           <h4 className="text-[#00E3FF] font-bold mb-4 flex items-center gap-2"><TrendingUp size={16}/> Strengths</h4>
-                           <ul className="space-y-3">
-                             {data.swot_analysis.strengths.map((s, i) => (
-                               <li key={i} className="flex items-start gap-3 bg-[#1A1A1A] p-3 rounded-lg text-sm text-gray-300">
-                                 <CheckCircle2 size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
-                                 {s}
-                               </li>
-                             ))}
-                           </ul>
+
+                    {/* Full SWOT */}
+                    <div className="lg:col-span-12 grid md:grid-cols-2 gap-8">
+                      <Card title="Internal Factors" className="h-full">
+                        <div className="space-y-8">
+                          <div>
+                            <h4 className="text-[#00E3FF] font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+                              <TrendingUp size={16}/> Strengths
+                            </h4>
+                            <div className="space-y-3">
+                              {data?.swot_analysis?.strengths?.map((s, i) => (
+                                <div key={i} className="flex gap-3 text-gray-300 bg-white/5 p-3 rounded-lg border border-white/5">
+                                  <CheckCircle2 size={18} className="text-[#00E3FF] shrink-0 mt-0.5" />
+                                  <span className="text-sm">{s}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="text-[#FFD700] font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+                              <ShieldAlert size={16}/> Weaknesses
+                            </h4>
+                            <div className="space-y-3">
+                              {data?.swot_analysis?.weaknesses?.map((s, i) => (
+                                <div key={i} className="flex gap-3 text-gray-300 bg-white/5 p-3 rounded-lg border border-white/5">
+                                  <AlertTriangle size={18} className="text-[#FFD700] shrink-0 mt-0.5" />
+                                  <span className="text-sm">{s}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                           <h4 className="text-[#FFD700] font-bold mb-4 flex items-center gap-2"><ShieldAlert size={16}/> Weaknesses</h4>
-                           <ul className="space-y-3">
-                             {data.swot_analysis.weaknesses.map((s, i) => (
-                               <li key={i} className="flex items-start gap-3 bg-[#1A1A1A] p-3 rounded-lg text-sm text-gray-300">
-                                 <AlertTriangle size={16} className="text-yellow-500 mt-0.5 flex-shrink-0" />
-                                 {s}
-                               </li>
-                             ))}
-                           </ul>
+                      </Card>
+
+                      <Card title="External Factors" className="h-full" accent="none">
+                        <div className="space-y-8">
+                          <div>
+                            <h4 className="text-green-400 font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+                              <Target size={16}/> Opportunities
+                            </h4>
+                            <div className="space-y-3">
+                              {data?.swot_analysis?.opportunities?.map((s, i) => (
+                                <div key={i} className="flex gap-3 text-gray-300 bg-white/5 p-3 rounded-lg border border-white/5 hover:border-green-500/30 transition-colors">
+                                  <Sparkles size={18} className="text-green-400 shrink-0 mt-0.5" />
+                                  <span className="text-sm">{s}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="text-red-400 font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+                              <Zap size={16}/> Threats
+                            </h4>
+                            <div className="space-y-3">
+                              {data?.swot_analysis?.threats?.map((s, i) => (
+                                <div key={i} className="flex gap-3 text-gray-300 bg-white/5 p-3 rounded-lg border border-white/5 hover:border-red-500/30 transition-colors">
+                                  <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5" />
+                                  <span className="text-sm">{s}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </Card>
+                      </Card>
+                    </div>
                  </div>
                )}
 
                {activeTab === 'ATS' && (
-                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                   <Card className="flex flex-col items-center justify-center text-center py-12">
-                      <CircularProgress percentage={data.ats_audit.score} color={data.ats_audit.score > 70 ? '#00E3FF' : '#FFD700'} />
-                      <h3 className="text-2xl font-bold mt-6">{data.ats_audit.verdict}</h3>
-                      <p className="text-gray-400 text-sm mt-2">ATS Readiness Score</p>
-                   </Card>
+                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                   {/* Score Card */}
+                   <div className="lg:col-span-4 space-y-8">
+                      <Card className="flex flex-col items-center justify-center text-center py-12 relative overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-b from-[#00E3FF]/10 to-transparent pointer-events-none"></div>
+                          <CircularProgress 
+                            percentage={data?.ats_audit?.score || 0} 
+                            color={(data?.ats_audit?.score || 0) > 70 ? '#00E3FF' : '#FFD700'} 
+                            size={160}
+                            strokeWidth={12}
+                          />
+                          <h3 className="text-3xl font-black mt-8 text-white">{data?.ats_audit?.verdict || 'N/A'}</h3>
+                          <p className="text-gray-400 text-sm mt-2 uppercase tracking-widest">Resume Health Score</p>
+                      </Card>
+                      
+                      {/* Breakdown */}
+                      <Card title="Scoring Breakdown">
+                        <div className="space-y-4">
+                          {data?.ats_audit?.score_breakdown?.map((item, i) => (
+                            <div key={i} className="group">
+                              <div className="flex justify-between text-sm mb-1 font-bold text-gray-300">
+                                <span>{item.category}</span>
+                                <span className={item.score > 70 ? 'text-[#00E3FF]' : 'text-[#FFD700]'}>{item.score}/100</span>
+                              </div>
+                              <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full ${item.score > 70 ? 'bg-[#00E3FF]' : 'bg-[#FFD700]'} transition-all duration-1000`} 
+                                  style={{ width: `${item.score}%` }}
+                                />
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">{item.feedback}</p>
+                            </div>
+                          )) || <p className="text-gray-500 text-sm">No detailed breakdown available.</p>}
+                        </div>
+                      </Card>
+                   </div>
                    
-                   <Card title="Critical Fixes" className="lg:col-span-2" accent="gold">
-                     <div className="space-y-4">
-                       {data.ats_audit.critical_fixes.map((fix, i) => (
-                         <div key={i} className="flex gap-4 p-4 bg-[#1A1A1A] rounded-xl border-l-2 border-red-500">
-                           <div className="font-bold text-red-500">0{i+1}</div>
-                           <p className="text-gray-300 text-sm">{fix}</p>
-                         </div>
-                       ))}
-                     </div>
-                   </Card>
+                   {/* Critical Fixes */}
+                   <div className="lg:col-span-8 space-y-8">
+                     <Card title="Critical Fixes (Line-by-Line)" accent="gold">
+                       <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                         {data?.ats_audit?.critical_fixes?.map((item, i) => (
+                           <div key={i} className="flex flex-col md:flex-row gap-4 p-5 bg-[#1A1A1A]/80 backdrop-blur-sm rounded-xl border border-white/5 hover:border-[#FFD700]/30 transition-all">
+                             <div className="md:w-32 shrink-0">
+                               <span className="text-xs font-bold text-[#FFD700] uppercase tracking-wider bg-[#FFD700]/10 px-2 py-1 rounded">
+                                 {item.section}
+                               </span>
+                             </div>
+                             <div className="flex gap-3">
+                               <AlertTriangle className="text-red-400 shrink-0 mt-1" size={16} />
+                               <p className="text-gray-300 text-sm leading-relaxed">{item.fix}</p>
+                             </div>
+                           </div>
+                         ))}
+                       </div>
+                     </Card>
 
-                   <Card title="Missing Keywords" className="lg:col-span-3">
-                     <div className="flex flex-wrap gap-3">
-                       {data.ats_audit.keyword_gaps.map((kw, i) => (
-                         <span key={i} className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-sm hover:border-[#FFD700] transition-colors cursor-default">
-                           {kw}
-                         </span>
-                       ))}
-                     </div>
-                   </Card>
+                     <Card title="Missing Keywords" accent="turquoise">
+                       <div className="flex flex-wrap gap-3">
+                         {data?.ats_audit?.keyword_gaps?.map((kw, i) => (
+                           <span key={i} className="px-4 py-2 bg-[#00E3FF]/10 border border-[#00E3FF]/30 text-[#00E3FF] rounded-full text-sm font-medium hover:bg-[#00E3FF] hover:text-black transition-all cursor-default">
+                             {kw}
+                           </span>
+                         ))}
+                       </div>
+                     </Card>
+                   </div>
                  </div>
                )}
 
                {activeTab === 'MAP' && (
                  <div className="space-y-8">
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                     <Card title="Best Fit Role" accent="turquoise">
-                        <div className="flex items-end gap-4 mb-4">
-                          <h2 className="text-3xl font-bold text-white">{data.career_map.best_fit_role}</h2>
-                          <span className="text-2xl font-bold text-[#00E3FF]">{data.career_map.match_percentage}% Match</span>
-                        </div>
-                        <p className="text-gray-400 text-sm leading-relaxed">{data.career_map.why_it_fits}</p>
-                     </Card>
-                     <Card title="Market Value">
-                        <div className="h-40 flex items-center justify-center">
-                          <div className="text-center">
-                            <p className="text-sm text-gray-500 mb-2">Estimated Salary Range</p>
-                            <h3 className="text-4xl font-bold text-[#FFD700]">{data.career_map.salary_range}</h3>
+                     <Card title="The Verdict" accent="turquoise">
+                        <div className="flex flex-col justify-between h-full">
+                          <div>
+                             <h2 className="text-4xl font-black text-white mb-2">{data?.career_map?.best_fit_role}</h2>
+                             <div className="flex items-center gap-3 mb-6">
+                                <span className="text-3xl font-bold text-[#00E3FF]">{data?.career_map?.match_percentage}% Match</span>
+                                <div className="h-px bg-white/20 flex-grow"></div>
+                             </div>
+                             <p className="text-gray-300 text-lg leading-relaxed">{data?.career_map?.why_it_fits}</p>
                           </div>
                         </div>
                      </Card>
-                   </div>
-                   
-                   <Card title="Target Companies">
-                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {data.career_map.top_companies.map((co, i) => (
-                          <div key={i} className="p-4 bg-[#1A1A1A] rounded-lg text-center font-bold text-gray-300 border border-white/5 hover:border-white/20 transition-all">
-                            {co}
+                     
+                     <div className="space-y-8">
+                        <Card className="relative overflow-hidden">
+                           <div className="absolute right-0 top-0 p-32 bg-[#FFD700] blur-[80px] opacity-10 rounded-full pointer-events-none"></div>
+                           <p className="text-sm text-gray-500 mb-2 uppercase tracking-widest font-bold">Projected Market Value</p>
+                           <h3 className="text-5xl font-black text-white">{data?.career_map?.salary_range}</h3>
+                        </Card>
+
+                        <Card title="Target Companies">
+                          <div className="flex flex-wrap gap-3">
+                              {data?.career_map?.top_companies?.map((co, i) => (
+                                <div key={i} className="px-5 py-3 glass-panel rounded-xl font-bold text-gray-300 hover:bg-white hover:text-black transition-all cursor-pointer">
+                                  {co}
+                                </div>
+                              ))}
                           </div>
-                        ))}
+                        </Card>
                      </div>
-                   </Card>
+                   </div>
 
                    <div className="grid md:grid-cols-3 gap-8">
-                     <Card title="Skill Gaps" className="md:col-span-1">
-                        <ul className="space-y-2">
-                          {data.career_map.gap_analysis.skill_gaps.map((g, i) => (
-                            <li key={i} className="text-sm text-gray-400 flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 bg-red-500 rounded-full"/> {g}
+                     <Card title="Skill Bridge" className="md:col-span-1 border-t-4 border-t-red-500/50">
+                        <ul className="space-y-3">
+                          {data?.career_map?.gap_analysis?.skill_gaps?.map((g, i) => (
+                            <li key={i} className="text-sm text-gray-300 flex items-start gap-3">
+                              <span className="w-1.5 h-1.5 bg-red-500 rounded-full mt-2"/> {g}
                             </li>
                           ))}
                         </ul>
                      </Card>
-                     <Card title="Experience Gaps" className="md:col-span-1">
-                        <ul className="space-y-2">
-                          {data.career_map.gap_analysis.experience_gaps.map((g, i) => (
-                            <li key={i} className="text-sm text-gray-400 flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full"/> {g}
+                     <Card title="Experience Bridge" className="md:col-span-1 border-t-4 border-t-yellow-500/50">
+                        <ul className="space-y-3">
+                          {data?.career_map?.gap_analysis?.experience_gaps?.map((g, i) => (
+                            <li key={i} className="text-sm text-gray-300 flex items-start gap-3">
+                              <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2"/> {g}
                             </li>
                           ))}
                         </ul>
                      </Card>
-                     <Card title="Project Gaps" className="md:col-span-1">
-                        <ul className="space-y-2">
-                          {data.career_map.gap_analysis.project_gaps.map((g, i) => (
-                            <li key={i} className="text-sm text-gray-400 flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"/> {g}
+                     <Card title="Project Bridge" className="md:col-span-1 border-t-4 border-t-blue-500/50">
+                        <ul className="space-y-3">
+                          {data?.career_map?.gap_analysis?.project_gaps?.map((g, i) => (
+                            <li key={i} className="text-sm text-gray-300 flex items-start gap-3">
+                              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2"/> {g}
                             </li>
                           ))}
                         </ul>
@@ -427,43 +536,62 @@ function App() {
 
                {activeTab === 'ROADMAP' && (
                  <div className="space-y-12">
-                   {data.prep_roadmap.map((week, idx) => (
-                     <div key={idx} className="relative">
-                       <div className="absolute left-0 top-0 bottom-0 w-px bg-white/10 ml-4 hidden md:block"></div>
-                       <div className="md:pl-12">
-                          <div className="flex items-center gap-4 mb-6">
-                            <div className="w-8 h-8 rounded-full bg-[#FFD700] text-black font-bold flex items-center justify-center shrink-0 z-10">
-                              {idx + 1}
-                            </div>
-                            <h3 className="text-2xl font-bold">{week.theme}</h3>
+                   {data?.prep_roadmap?.map((week, idx) => (
+                     <div key={idx} className="relative group">
+                       <div className="absolute left-[19px] top-12 bottom-[-48px] w-0.5 bg-gradient-to-b from-[#FFD700] to-transparent hidden md:block group-last:hidden"></div>
+                       
+                       <div className="md:pl-16 relative">
+                          {/* Week Badge */}
+                          <div className="hidden md:flex absolute left-0 top-0 w-10 h-10 rounded-full bg-[#FFD700] text-black font-black items-center justify-center z-10 shadow-[0_0_20px_rgba(255,215,0,0.5)]">
+                            {idx + 1}
+                          </div>
+
+                          <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
+                            <h3 className="text-3xl font-bold text-white"><span className="md:hidden text-[#FFD700] mr-2">#{idx+1}</span>{week.theme}</h3>
+                            <div className="h-px bg-white/10 flex-grow hidden md:block"></div>
                           </div>
                           
-                          <div className="grid md:grid-cols-2 gap-6">
-                            <Card title="Daily Protocol" className="bg-[#0A0A0A]">
-                              <ul className="space-y-4">
+                          <div className="grid lg:grid-cols-2 gap-8">
+                            <Card title="Daily Protocol" className="h-full bg-white/5">
+                              <ul className="space-y-5">
                                 {week.daily_tasks.map((task, tIdx) => (
-                                  <li key={tIdx} className="flex gap-3 text-sm text-gray-300">
-                                    <input type="checkbox" className="mt-1 rounded border-gray-600 bg-transparent text-[#FFD700] focus:ring-[#FFD700]" />
-                                    <span>{task}</span>
+                                  <li key={tIdx} className="flex gap-4 text-sm text-gray-300 group/item hover:text-white transition-colors">
+                                    <div className="mt-0.5 w-5 h-5 rounded border border-gray-600 flex items-center justify-center group-hover/item:border-[#FFD700] transition-colors cursor-pointer">
+                                      <div className="w-3 h-3 bg-[#FFD700] rounded-sm opacity-0 group-active/item:opacity-100 transition-opacity"></div>
+                                    </div>
+                                    <span className="leading-relaxed">{task}</span>
                                   </li>
                                 ))}
                               </ul>
                             </Card>
-                            <div className="space-y-6">
-                              <Card title="Resources" accent="turquoise">
-                                <ul className="space-y-2">
+                            
+                            <div className="space-y-8">
+                              <Card title="Curated Resources" accent="turquoise">
+                                <ul className="space-y-3">
                                   {week.resources.map((res, rIdx) => (
-                                    <li key={rIdx} className="text-sm text-[#00E3FF] underline decoration-white/20 underline-offset-4 cursor-pointer hover:decoration-[#00E3FF]">
-                                      {res}
+                                    <li key={rIdx}>
+                                      <a 
+                                        href={`https://www.google.com/search?q=${encodeURIComponent(res)}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-[#00E3FF]/10 border border-transparent hover:border-[#00E3FF]/30 transition-all group/link"
+                                      >
+                                        <Search size={16} className="text-[#00E3FF]" />
+                                        <span className="text-sm font-medium text-gray-200 group-hover/link:text-white flex-grow">{res}</span>
+                                        <ExternalLink size={14} className="opacity-0 group-hover/link:opacity-100 text-[#00E3FF] transition-opacity" />
+                                      </a>
                                     </li>
                                   ))}
                                 </ul>
                               </Card>
-                              <Card title="Deliverables">
-                                <ul className="space-y-2">
+                              
+                              <Card title="Key Deliverables" accent="none" className="bg-gradient-to-br from-white/5 to-transparent border-white/10">
+                                <ul className="space-y-3">
                                   {week.deliverables.map((del, dIdx) => (
-                                    <li key={dIdx} className="text-sm text-white font-medium flex items-center gap-2">
-                                      <Target size={14} className="text-[#FFD700]" />
+                                    <li key={dIdx} className="text-sm text-white font-medium flex items-center gap-3">
+                                      <div className="p-1.5 rounded-full bg-[#FFD700]/20">
+                                         <Target size={14} className="text-[#FFD700]" />
+                                      </div>
                                       {del}
                                     </li>
                                   ))}
@@ -484,7 +612,7 @@ function App() {
   };
 
   return (
-    <div className="bg-black text-white min-h-screen font-sans selection:bg-[#FFD700] selection:text-black">
+    <div className="bg-black text-white min-h-screen font-sans selection:bg-[#FFD700] selection:text-black overflow-x-hidden">
       {view === ViewState.LANDING && renderLanding()}
       {view === ViewState.INPUT && renderInput()}
       {view === ViewState.PROCESSING && renderProcessing()}
