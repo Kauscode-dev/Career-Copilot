@@ -24,7 +24,8 @@ import {
   Briefcase,
   MapPin,
   Building2,
-  Globe
+  Globe,
+  Fingerprint
 } from 'lucide-react';
 import { Button } from './components/Button';
 import { Card } from './components/Card';
@@ -33,7 +34,6 @@ import {
   analyzeCareer, 
   quickPolishAspirations, 
   getMarketInsights, 
-  generateCareerAvatar, 
   createChatSession,
   generateCustomRoadmap
 } from './services/geminiService';
@@ -63,10 +63,6 @@ function App() {
   const [isPolishing, setIsPolishing] = useState(false);
   const [marketInsights, setMarketInsights] = useState<string | null>(null);
   const [isLoadingMarket, setIsLoadingMarket] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [imagePrompt, setImagePrompt] = useState('');
-  const [imageSize, setImageSize] = useState<ImageSize>('1K');
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   
   // Roadmap States
   const [roadmapDuration, setRoadmapDuration] = useState(4); // weeks
@@ -86,6 +82,17 @@ function App() {
   const INDUSTRIES = ["Fintech", "Edtech", "Healthtech", "E-commerce", "SaaS", "AI/ML", "Consumer Social", "Logistics", "Real Estate", "Cyber Security", "Media/Entertainment"];
   const COMPANY_TYPES = ["Early-stage Startup", "Growth-stage Startup", "Unicorn", "MNC", "Enterprise", "FAANG", "Consulting Firm", "Investment Bank"];
   const LOCATIONS = ["Bangalore", "Gurgaon", "Mumbai", "Hyderabad", "Pune", "Delhi NCR", "Chennai", "Noida", "Remote (India)", "Remote (Global)"];
+
+  const ARCHETYPE_TRAITS: Record<string, string[]> = {
+    "The Builder": ["Autonomous", "Execution-Oriented", "Zero-to-One Mindset"],
+    "The Strategist": ["Systems Thinking", "Long-Term Vision", "Pattern Recognition"],
+    "The Creator": ["Innovative", "Storytelling", "Originality"],
+    "The Operator": ["Efficiency", "Process-Driven", "Reliability"],
+    "The Analyst": ["Data-Driven", "Logical", "Precision"],
+    "The Communicator": ["Empathetic", "Persuasive", "Articulate"],
+    "The Visionary": ["Future-Focused", "Risk-Taking", "Inspirational"],
+    "Explorer": ["Curious", "Adaptable", "Multidisciplinary"]
+  };
 
   // Initialize Chat Session on Load
   useEffect(() => {
@@ -113,8 +120,6 @@ function App() {
     try {
       const result = await analyzeCareer(resumeText, aspirations, preferences);
       setData(result);
-      // Pre-fill image prompt with inferred data or generic
-      setImagePrompt(`A fictional character representing ${result?.user_persona?.archetype} in a futuristic setting.`);
       clearInterval(interval);
       setView(ViewState.DASHBOARD);
     } catch (err: any) {
@@ -179,20 +184,6 @@ function App() {
     }
   };
 
-  const handleGenerateImage = async () => {
-    if (!imagePrompt) return;
-    setIsGeneratingImage(true);
-    try {
-      const img = await generateCareerAvatar(imagePrompt, imageSize);
-      setGeneratedImage(img);
-    } catch (e) {
-      console.error(e);
-      alert("Image generation failed.");
-    } finally {
-      setIsGeneratingImage(false);
-    }
-  };
-
   const handleGenerateRoadmap = async () => {
     if (!data) return;
     setIsGeneratingRoadmap(true);
@@ -253,34 +244,195 @@ function App() {
   // --- Views ---
 
   const renderLanding = () => (
-    <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden p-6 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden p-6 bg-halftone">
       <SpaceBackground />
 
+      {/* Hero Section */}
       <motion.div 
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="max-w-5xl mx-auto space-y-10 relative z-10"
+        className="max-w-7xl mx-auto text-center relative z-10 space-y-12"
       >
-        <div className="inline-flex items-center gap-2 px-6 py-2 rounded-full glass-panel border border-white/20 text-sm font-medium tracking-wide mb-4">
-          <Sparkles size={14} className="text-[#FFD700]" />
+        {/* Badge */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, duration: 0.6 }}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full glass-panel border border-white/20 text-sm font-medium tracking-wide backdrop-blur-xl"
+        >
+          <Sparkles size={16} className="text-[#FFD700]" />
           <span className="text-gray-200">AI-Powered Career Intelligence v2.5</span>
-        </div>
+        </motion.div>
         
-        <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[1] text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 drop-shadow-2xl">
-          Career<span className="text-[#FFD700]">Pixel</span>
-        </h1>
+        {/* Main Heading */}
+        <motion.h1 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.8 }}
+          className="text-7xl md:text-9xl font-black tracking-tighter leading-[0.9] relative"
+        >
+          <span className="text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/60 drop-shadow-2xl">
+            Career
+          </span>
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FFD700] via-[#00E3FF] to-[#FFD700] animate-gradient">
+            Pixel
+          </span>
+          <div className="absolute inset-0 bg-gradient-to-r from-[#FFD700] via-[#00E3FF] to-[#FFD700] blur-[100px] opacity-20 -z-10"></div>
+        </motion.h1>
         
-        <p className="text-2xl md:text-3xl font-light text-gray-400 max-w-3xl mx-auto leading-relaxed">
-          The <span className="text-[#00E3FF]">raw truth</span> about your resume.
-          <br />
-          The <span className="text-[#FFD700]">psychological map</span> to your dream job.
-        </p>
+        {/* Subheading */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.8 }}
+          className="space-y-4"
+        >
+          <p className="text-2xl md:text-4xl font-light text-gray-300 max-w-4xl mx-auto leading-relaxed">
+            Stop applying to hundreds of jobs.
+          </p>
+          <p className="text-3xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#00E3FF] to-[#FFD700]">
+            Start landing the right one.
+          </p>
+        </motion.div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-8">
-          <Button onClick={() => setView(ViewState.INPUT)} className="w-full sm:w-auto text-lg px-12 py-5 shadow-[0_0_40px_-10px_rgba(255,215,0,0.5)]">
-            Create Profile
-            <ChevronRight size={20} />
+        {/* Description */}
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8, duration: 0.8 }}
+          className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto leading-relaxed font-light"
+        >
+          Your AI career agent that finds roles you'll actually thrive in, 
+          then helps you execute <span className="text-[#00E3FF] font-medium">personalized outreach</span> that gets responses.
+        </motion.p>
+
+        {/* CTA Buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1, duration: 0.8 }}
+          className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-8"
+        >
+          <Button 
+            onClick={() => setView(ViewState.INPUT)} 
+            className="w-full sm:w-auto text-lg px-12 py-6 shadow-[0_0_50px_-10px_rgba(255,215,0,0.6)] hover:shadow-[0_0_80px_-10px_rgba(255,215,0,0.8)] group relative overflow-hidden"
+          >
+            <span className="relative z-10 flex items-center gap-3">
+              Get Started
+              <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#FFD700] to-[#FFA500] opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          </Button>
+          
+          <button className="w-full sm:w-auto px-12 py-6 rounded-full text-lg font-bold glass-panel border border-white/30 hover:border-[#00E3FF] text-white hover:bg-white/10 transition-all flex items-center justify-center gap-3 group">
+            <Sparkles size={20} className="text-[#00E3FF]" />
+            See How It Works
+            <ExternalLink size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+        </motion.div>
+
+        {/* Feature Pills */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.2, duration: 0.8 }}
+          className="flex flex-wrap items-center justify-center gap-4 pt-12"
+        >
+          {[
+            { icon: Brain, text: "AI Psychoanalysis", color: "#FFD700" },
+            { icon: Target, text: "Smart Job Matching", color: "#00E3FF" },
+            { icon: Zap, text: "Outreach Automation", color: "#FFD700" },
+          ].map((feature, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-3 px-6 py-3 glass-panel rounded-full border border-white/10 hover:border-white/30 transition-all cursor-default group"
+            >
+              <feature.icon size={18} style={{ color: feature.color }} className="group-hover:scale-110 transition-transform" />
+              <span className="text-sm font-medium text-gray-300">{feature.text}</span>
+            </div>
+          ))}
+        </motion.div>
+      </motion.div>
+
+      {/* Floating Glass Cards - Problem Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.4, duration: 1 }}
+        className="max-w-7xl mx-auto mt-32 relative z-10"
+      >
+        <h2 className="text-4xl md:text-5xl font-black text-center mb-16 text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
+          Job searching is <span className="text-[#FFD700]">broken</span>
+        </h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {[
+            {
+              icon: "🎯",
+              title: "Spray and pray doesn't work",
+              description: "You apply to 200 jobs with the same resume. 195 never respond. You waste weeks on roles you'd hate anyway.",
+              accent: "#FFD700"
+            },
+            {
+              icon: "🤖",
+              title: "Algorithms ignore what matters",
+              description: "Job boards match keywords, not culture fit, growth potential, or what actually energizes you.",
+              accent: "#00E3FF"
+            },
+            {
+              icon: "📧",
+              title: "Generic outreach gets ghosted",
+              description: "Cold emails that could've been written by anyone go straight to trash. You need differentiation, not templates.",
+              accent: "#FFD700"
+            }
+          ].map((problem, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.6 + idx * 0.1, duration: 0.6 }}
+              className="glass-panel p-8 rounded-3xl border border-white/10 hover:border-white/30 transition-all group hover:scale-105 hover:shadow-2xl relative overflow-hidden"
+              style={{
+                boxShadow: `0 0 40px -10px ${problem.accent}20`
+              }}
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 blur-[60px] opacity-20 rounded-full transition-opacity group-hover:opacity-40" 
+                   style={{ background: problem.accent }}></div>
+              
+              <div className="text-5xl mb-6 filter drop-shadow-lg">{problem.icon}</div>
+              <h3 className="text-xl font-bold text-white mb-4">{problem.title}</h3>
+              <p className="text-gray-400 leading-relaxed">{problem.description}</p>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* Final CTA Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 2, duration: 1 }}
+        className="max-w-5xl mx-auto mt-32 mb-20 relative z-10"
+      >
+        <div className="glass-panel p-12 md:p-16 rounded-3xl border border-white/20 text-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#FFD700]/10 via-transparent to-[#00E3FF]/10"></div>
+          
+          <h2 className="text-4xl md:text-6xl font-black mb-6 text-white relative z-10">
+            Ready to change how you <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FFD700] to-[#00E3FF]">find work?</span>
+          </h2>
+          
+          <p className="text-xl text-gray-300 mb-10 relative z-10">
+            Join thousands who've already transformed their career search with AI
+          </p>
+          
+          <Button 
+            onClick={() => setView(ViewState.INPUT)}
+            variant="primary"
+            className="text-xl px-16 py-7 shadow-[0_0_60px_-10px_rgba(255,215,0,0.7)] relative z-10"
+          >
+            Get Early Access
+            <ChevronRight size={24} />
           </Button>
         </div>
       </motion.div>
@@ -288,7 +440,7 @@ function App() {
   );
 
   const renderInput = () => (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 max-w-6xl mx-auto relative">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 max-w-6xl mx-auto relative bg-halftone">
       <SpaceBackground />
       
       <motion.div 
@@ -299,12 +451,12 @@ function App() {
       >
         <div className="space-y-6">
           <h2 className="text-5xl font-black tracking-tight text-white">Let's decode <br/> your DNA.</h2>
-          <p className="text-xl text-gray-400 font-light">
+          <p className="text-xl text-gray-200 font-light">
             Upload your resume and tell us your wildest ambitions. 
             We'll handle the psychology.
           </p>
           
-          <div className="glass-panel p-8 rounded-2xl border-2 border-dashed border-white/20 hover:border-[#FFD700]/50 transition-colors relative group">
+          <div className="glass-panel p-8 rounded-2xl border-2 border-dashed border-white/30 hover:border-[#FFD700] transition-colors relative group bg-black/60">
               <input 
                 type="file" 
                 accept=".pdf,.txt,.md" 
@@ -328,10 +480,10 @@ function App() {
                     </>
                  ) : (
                     <>
-                      <Upload className="text-gray-500 group-hover:text-white transition-colors" size={48} />
+                      <Upload className="text-gray-400 group-hover:text-white transition-colors" size={48} />
                       <div>
                         <p className="text-white font-medium">Drag & Drop PDF or Click to Upload</p>
-                        <p className="text-gray-500 text-sm mt-1">Supported: PDF, TXT (Max 5MB)</p>
+                        <p className="text-gray-400 text-sm mt-1">Supported: PDF, TXT (Max 5MB)</p>
                       </div>
                     </>
                  )}
@@ -340,7 +492,7 @@ function App() {
         </div>
 
         <div className="space-y-6 flex flex-col justify-between">
-           <div className="glass-panel p-6 rounded-2xl h-full flex flex-col space-y-6">
+           <div className="glass-panel p-6 rounded-2xl h-full flex flex-col space-y-6 bg-black/60 border border-white/20">
              
              {/* Ambitions Text */}
              <div>
@@ -359,56 +511,30 @@ function App() {
                   value={aspirations}
                   onChange={(e) => setAspirations(e.target.value)}
                   placeholder="Tell us where you want to go..."
-                  className="w-full h-24 bg-black/20 rounded-lg p-3 outline-none resize-none text-gray-200 placeholder-gray-600 focus:bg-black/40 border border-white/5 focus:border-white/20"
+                  className="w-full h-24 bg-black/50 rounded-lg p-3 outline-none resize-none text-white placeholder-gray-400 focus:bg-black/70 border border-white/20 focus:border-[#FFD700] transition-colors"
                 />
              </div>
 
              {/* Dropdowns */}
              <div className="grid grid-cols-2 gap-4">
-               <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Target Role</label>
-                  <select 
-                    className="w-full bg-black/20 rounded-lg p-2 text-sm text-white border border-white/5 outline-none"
-                    value={preferences.targetRole}
-                    onChange={(e) => setPreferences({...preferences, targetRole: e.target.value})}
-                  >
-                    <option value="">Optional</option>
-                    {JOB_FUNCTIONS.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-               </div>
-               <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Industry</label>
-                  <select 
-                    className="w-full bg-black/20 rounded-lg p-2 text-sm text-white border border-white/5 outline-none"
-                    value={preferences.targetIndustry}
-                    onChange={(e) => setPreferences({...preferences, targetIndustry: e.target.value})}
-                  >
-                    <option value="">Optional</option>
-                    {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
-                  </select>
-               </div>
-               <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Company Type</label>
-                  <select 
-                    className="w-full bg-black/20 rounded-lg p-2 text-sm text-white border border-white/5 outline-none"
-                    value={preferences.targetCompanyType}
-                    onChange={(e) => setPreferences({...preferences, targetCompanyType: e.target.value})}
-                  >
-                    <option value="">Optional</option>
-                    {COMPANY_TYPES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-               </div>
-               <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Location</label>
-                  <select 
-                    className="w-full bg-black/20 rounded-lg p-2 text-sm text-white border border-white/5 outline-none"
-                    value={preferences.targetLocation}
-                    onChange={(e) => setPreferences({...preferences, targetLocation: e.target.value})}
-                  >
-                    <option value="">Optional</option>
-                    {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-                  </select>
-               </div>
+               {[
+                 { label: "Target Role", value: preferences.targetRole, key: "targetRole", options: JOB_FUNCTIONS },
+                 { label: "Industry", value: preferences.targetIndustry, key: "targetIndustry", options: INDUSTRIES },
+                 { label: "Company Type", value: preferences.targetCompanyType, key: "targetCompanyType", options: COMPANY_TYPES },
+                 { label: "Location", value: preferences.targetLocation, key: "targetLocation", options: LOCATIONS }
+               ].map((field, idx) => (
+                 <div key={idx}>
+                    <label className="text-xs text-gray-300 mb-1 block font-bold">{field.label}</label>
+                    <select 
+                      className="w-full bg-black/50 rounded-lg p-2 text-sm text-white border border-white/20 outline-none focus:border-[#00E3FF] transition-colors"
+                      value={field.value}
+                      onChange={(e) => setPreferences({...preferences, [field.key]: e.target.value})}
+                    >
+                      <option value="">Optional</option>
+                      {field.options.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                 </div>
+               ))}
              </div>
           </div>
 
@@ -434,7 +560,7 @@ function App() {
     ];
 
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center relative">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center relative bg-halftone">
          <SpaceBackground />
          <div className="relative">
             <div className="absolute inset-0 bg-[#FFD700] blur-[40px] opacity-20 rounded-full animate-pulse"></div>
@@ -451,7 +577,7 @@ function App() {
   };
 
   const renderError = () => (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto relative">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto relative bg-halftone">
       <SpaceBackground />
       <div className="glass-panel p-8 rounded-3xl border border-red-500/30">
         <AlertTriangle className="text-red-500 mb-6 mx-auto" size={48} />
@@ -546,9 +672,11 @@ function App() {
     ];
 
     const currentRoadmap = customRoadmap || data?.prep_roadmap;
+    const archetype = data?.user_persona?.archetype || 'Explorer';
+    const traits = ARCHETYPE_TRAITS[archetype] || ARCHETYPE_TRAITS['Explorer'];
 
     return (
-      <div className="min-h-screen pb-20 relative">
+      <div className="min-h-screen pb-20 relative bg-halftone">
         <SpaceBackground />
         
         {/* Header */}
@@ -561,7 +689,7 @@ function App() {
             <div className="flex items-center gap-6">
                <div className="hidden md:flex flex-col items-end">
                  <span className="text-sm font-bold text-white">{data?.parsed_data?.name || 'Anonymous User'}</span>
-                 <span className="text-xs text-gray-400 uppercase tracking-wider">{data?.user_persona?.archetype || 'Explorer'}</span>
+                 <span className="text-xs text-gray-400 uppercase tracking-wider">{archetype}</span>
                </div>
                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-black border border-white/20 flex items-center justify-center">
                   <User size={18} className="text-gray-400"/>
@@ -601,122 +729,80 @@ function App() {
              >
                {activeTab === 'PERSONA' && (
                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Hero Identity */}
-                    <Card className="lg:col-span-7" accent="gold" title="Identity Snapshot">
-                      <h1 className="text-3xl md:text-5xl font-black mb-8 leading-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
-                        {data?.user_persona?.headline || 'Your Career Identity'}
-                      </h1>
-                      <div className="glass-panel p-8 rounded-2xl bg-black/20 border border-white/5 relative overflow-hidden">
+                    {/* Identity Snapshot - Minimalist */}
+                    <Card className="lg:col-span-8" accent="none" title="Identity Snapshot">
+                      <div className="glass-panel p-10 rounded-2xl bg-black/40 border border-white/10 relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 h-full bg-[#FFD700]"></div>
-                        <p className="text-lg md:text-xl leading-relaxed text-gray-200 font-light italic font-serif opacity-90">
-                          "{data?.user_persona?.psych_profile || 'Analyzing personality...'}"
+                        <h1 className="text-2xl md:text-3xl font-bold mb-6 text-white leading-tight">
+                           {data?.user_persona?.headline}
+                        </h1>
+                        <p className="text-lg leading-relaxed text-gray-300 font-light opacity-90">
+                          {data?.user_persona?.psych_profile}
                         </p>
                       </div>
                     </Card>
 
-                    {/* Professional Spirit (Avatar) */}
-                    <div className="lg:col-span-5 space-y-8">
-                      <Card title="Your Professional Spirit" accent="white" className="h-full">
-                         <div className="flex flex-col h-full">
-                            <div className="relative flex-grow min-h-[300px] bg-black/40 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center group">
-                               {generatedImage ? (
-                                 <img src={generatedImage} alt="Generated Avatar" className="w-full h-full object-cover" />
-                               ) : (
-                                 <div className="text-center p-6">
-                                   <div className="relative inline-block mb-4">
-                                     <div className="absolute inset-0 bg-[#00E3FF] blur-xl opacity-20"></div>
-                                     <Brain size={48} className="text-gray-600 relative z-10"/>
-                                   </div>
-                                   <p className="text-gray-400 text-sm mb-4">Visualize your inner professional character</p>
-                                   <div className="flex gap-2 justify-center">
-                                     <select 
-                                       value={imageSize} 
-                                       onChange={(e) => setImageSize(e.target.value as ImageSize)}
-                                       className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
-                                     >
-                                       <option value="1K">1K</option>
-                                       <option value="2K">2K</option>
-                                       <option value="4K">4K</option>
-                                     </select>
-                                     <Button onClick={handleGenerateImage} disabled={isGeneratingImage} variant="secondary" className="py-1 px-4 text-xs h-8">
-                                       {isGeneratingImage ? <Loader2 className="animate-spin" size={14}/> : 'Generate'}
-                                     </Button>
-                                   </div>
-                                 </div>
-                               )}
-                               
-                               {/* Archetype Label Overlay */}
-                               <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-md border border-white/10 p-3 rounded-xl">
-                                  <div className="text-[#00E3FF] text-xs font-bold uppercase tracking-widest mb-1">Archetype</div>
-                                  <div className="text-white font-bold text-lg">{data?.user_persona?.archetype}</div>
-                               </div>
-                            </div>
-                         </div>
+                    {/* Archetype Traits Card - Minimalist */}
+                    <div className="lg:col-span-4 space-y-8">
+                      <Card className="h-full flex flex-col justify-center text-center relative overflow-hidden bg-black/40" accent="white">
+                          <div className="absolute inset-0 bg-gradient-to-b from-[#00E3FF]/5 to-transparent pointer-events-none"></div>
+                          <Fingerprint size={48} className="mx-auto text-[#00E3FF] mb-6 opacity-80" />
+                          <h2 className="text-2xl font-black uppercase tracking-widest text-white mb-2">{archetype}</h2>
+                          <div className="w-16 h-1 bg-[#00E3FF] mx-auto rounded-full mb-8"></div>
+                          <div className="space-y-4">
+                            {traits.map((trait, i) => (
+                              <div key={i} className="py-3 px-4 glass-panel rounded-lg text-sm font-bold text-gray-300 border border-white/5">
+                                {trait}
+                              </div>
+                            ))}
+                          </div>
                       </Card>
                     </div>
 
-                    {/* Full SWOT */}
-                    <div className="lg:col-span-12 grid md:grid-cols-2 gap-8">
-                      <Card title="Internal Factors" className="h-full">
-                        <div className="space-y-8 font-sans">
-                          <div>
-                            <h4 className="text-[#00E3FF] font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
-                              <TrendingUp size={16}/> Strengths
-                            </h4>
-                            <div className="space-y-3">
-                              {data?.swot_analysis?.strengths?.map((s, i) => (
-                                <div key={i} className="flex gap-3 text-gray-200 bg-white/5 p-4 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
-                                  <CheckCircle2 size={20} className="text-[#00E3FF] shrink-0 mt-0.5" />
-                                  <span className="text-base">{s}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="text-[#FFD700] font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
-                              <ShieldAlert size={16}/> Weaknesses
-                            </h4>
-                            <div className="space-y-3">
-                              {data?.swot_analysis?.weaknesses?.map((s, i) => (
-                                <div key={i} className="flex gap-3 text-gray-200 bg-white/5 p-4 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
-                                  <AlertTriangle size={20} className="text-[#FFD700] shrink-0 mt-0.5" />
-                                  <span className="text-base">{s}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
+                    {/* Full SWOT - Split into 4 distinct cards */}
+                    <div className="lg:col-span-12 grid md:grid-cols-4 gap-6">
+                      <Card className="h-full border-comic border-green-500/30" accent="none">
+                        <h4 className="text-green-400 font-black text-sm uppercase tracking-widest mb-6 flex items-center gap-2">
+                          <CheckCircle2 size={18}/> Strengths
+                        </h4>
+                        <ul className="space-y-3">
+                          {data?.swot_analysis?.strengths?.map((s, i) => (
+                            <li key={i} className="text-sm text-gray-300 leading-snug pb-2 border-b border-white/5 last:border-0">{s}</li>
+                          ))}
+                        </ul>
                       </Card>
 
-                      <Card title="External Factors" className="h-full" accent="none">
-                        <div className="space-y-8 font-sans">
-                          <div>
-                            <h4 className="text-green-400 font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
-                              <Target size={16}/> Opportunities
-                            </h4>
-                            <div className="space-y-3">
-                              {data?.swot_analysis?.opportunities?.map((s, i) => (
-                                <div key={i} className="flex gap-3 text-gray-200 bg-white/5 p-4 rounded-xl border border-white/5 hover:border-green-500/30 transition-colors">
-                                  <Sparkles size={20} className="text-green-400 shrink-0 mt-0.5" />
-                                  <span className="text-base">{s}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="text-red-400 font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
-                              <Zap size={16}/> Threats
-                            </h4>
-                            <div className="space-y-3">
-                              {data?.swot_analysis?.threats?.map((s, i) => (
-                                <div key={i} className="flex gap-3 text-gray-200 bg-white/5 p-4 rounded-xl border border-white/5 hover:border-red-500/30 transition-colors">
-                                  <AlertTriangle size={20} className="text-red-400 shrink-0 mt-0.5" />
-                                  <span className="text-base">{s}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
+                      <Card className="h-full border-comic border-yellow-500/30" accent="none">
+                        <h4 className="text-[#FFD700] font-black text-sm uppercase tracking-widest mb-6 flex items-center gap-2">
+                          <AlertTriangle size={18}/> Weaknesses
+                        </h4>
+                        <ul className="space-y-3">
+                          {data?.swot_analysis?.weaknesses?.map((s, i) => (
+                            <li key={i} className="text-sm text-gray-300 leading-snug pb-2 border-b border-white/5 last:border-0">{s}</li>
+                          ))}
+                        </ul>
+                      </Card>
+
+                      <Card className="h-full border-comic border-blue-500/30" accent="none">
+                        <h4 className="text-[#00E3FF] font-black text-sm uppercase tracking-widest mb-6 flex items-center gap-2">
+                          <Target size={18}/> Opportunities
+                        </h4>
+                        <ul className="space-y-3">
+                          {data?.swot_analysis?.opportunities?.map((s, i) => (
+                            <li key={i} className="text-sm text-gray-300 leading-snug pb-2 border-b border-white/5 last:border-0">{s}</li>
+                          ))}
+                        </ul>
+                      </Card>
+
+                      <Card className="h-full border-comic border-red-500/30" accent="none">
+                        <h4 className="text-red-400 font-black text-sm uppercase tracking-widest mb-6 flex items-center gap-2">
+                          <ShieldAlert size={18}/> Threats
+                        </h4>
+                        <ul className="space-y-3">
+                          {data?.swot_analysis?.threats?.map((s, i) => (
+                            <li key={i} className="text-sm text-gray-300 leading-snug pb-2 border-b border-white/5 last:border-0">{s}</li>
+                          ))}
+                        </ul>
                       </Card>
                     </div>
                  </div>
@@ -726,8 +812,8 @@ function App() {
                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                    {/* Score Card */}
                    <div className="lg:col-span-4 space-y-8">
-                      <Card className="flex flex-col items-center justify-center text-center py-12 relative overflow-hidden">
-                          <div className="absolute inset-0 bg-gradient-to-b from-[#00E3FF]/10 to-transparent pointer-events-none"></div>
+                      <Card className="flex flex-col items-center justify-center text-center py-12 relative overflow-hidden bg-black/40">
+                          <div className="absolute inset-0 bg-gradient-to-b from-[#00E3FF]/5 to-transparent pointer-events-none"></div>
                           <CircularProgress 
                             percentage={data?.ats_audit?.score || 0} 
                             color={(data?.ats_audit?.score || 0) > 70 ? '#00E3FF' : '#FFD700'} 
@@ -911,7 +997,7 @@ function App() {
                {activeTab === 'ROADMAP' && (
                  <div className="space-y-12">
                    {/* Custom Roadmap Generator */}
-                   <div className="flex flex-col md:flex-row justify-between items-center gap-4 glass-panel p-6 rounded-2xl">
+                   <div className="flex flex-col md:flex-row justify-between items-center gap-4 glass-panel p-6 rounded-2xl border-comic border-white/20">
                       <div className="text-left">
                         <h3 className="text-xl font-bold text-white mb-1">Custom Action Plan</h3>
                         <p className="text-gray-400 text-sm">Select duration for a personalized week-by-week strategy.</p>
@@ -953,7 +1039,7 @@ function App() {
                             </div>
                             
                             <div className="grid lg:grid-cols-2 gap-8">
-                              <Card title="Daily Protocol" className="h-full bg-white/5">
+                              <Card title="Daily Protocol" className="h-full bg-white/5 border-comic border-white/10">
                                 <ul className="space-y-5">
                                   {week.daily_tasks.map((task: string, tIdx: number) => (
                                     <li key={tIdx} className="flex gap-4 text-sm text-gray-300 group/item hover:text-white transition-colors">
@@ -967,7 +1053,7 @@ function App() {
                               </Card>
                               
                               <div className="space-y-8">
-                                <Card title="Curated Resources" accent="turquoise">
+                                <Card title="Curated Resources" accent="turquoise" className="border-comic border-[#00E3FF]/20">
                                   <ul className="space-y-3">
                                     {week.resources.map((res: string, rIdx: number) => (
                                       <li key={rIdx}>
