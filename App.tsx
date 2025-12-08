@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Brain, 
@@ -18,14 +18,28 @@ import {
   ExternalLink,
   Zap,
   BarChart2,
-  Search
+  Search,
+  MessageSquare,
+  X,
+  Send,
+  Globe,
+  ImageIcon,
+  Lightbulb
 } from 'lucide-react';
 import { Button } from './components/Button';
 import { Card } from './components/Card';
 import { CircularProgress } from './components/ProgressBar';
-import { analyzeCareer } from './services/geminiService';
+import { 
+  analyzeCareer, 
+  quickPolishAspirations, 
+  getMarketInsights, 
+  generateCareerAvatar, 
+  generateDeepStrategy, 
+  createChatSession,
+  generateCustomRoadmap
+} from './services/geminiService';
 import { extractTextFromPDF } from './services/pdfService';
-import { CareerPixelResponse, ViewState } from './types';
+import { CareerPixelResponse, ViewState, ChatMessage, ImageSize } from './types';
 
 function App() {
   const [view, setView] = useState<ViewState>(ViewState.LANDING);
@@ -36,13 +50,50 @@ function App() {
   const [errorMsg, setErrorMsg] = useState('');
   const [activeTab, setActiveTab] = useState<'PERSONA' | 'ATS' | 'MAP' | 'ROADMAP'>('PERSONA');
   const [isParsingPdf, setIsParsingPdf] = useState(false);
+  
+  // Feature States
+  const [isPolishing, setIsPolishing] = useState(false);
+  const [marketInsights, setMarketInsights] = useState<string | null>(null);
+  const [isLoadingMarket, setIsLoadingMarket] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [imagePrompt, setImagePrompt] = useState('');
+  const [imageSize, setImageSize] = useState<ImageSize>('1K');
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [deepStrategy, setDeepStrategy] = useState<string | null>(null);
+  const [isThinking, setIsThinking] = useState(false);
+
+  // Roadmap States
+  const [roadmapDuration, setRoadmapDuration] = useState(4); // weeks
+  const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
+  const [customRoadmap, setCustomRoadmap] = useState<any[] | null>(null);
+  
+  // Chat States
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatSession, setChatSession] = useState<any>(null);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Initialize Chat Session on Load
+  useEffect(() => {
+    try {
+      if (process.env.API_KEY) {
+        setChatSession(createChatSession());
+      }
+    } catch (e) {
+      console.error("Chat init failed", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages, isChatOpen]);
 
   const handleAnalyze = async () => {
     if (!resumeText.trim()) return;
     
     setView(ViewState.PROCESSING);
-    
-    // Simulate steps for UI effect while waiting for API
     const interval = setInterval(() => {
       setLoadingStep(prev => (prev < 3 ? prev + 1 : prev));
     }, 1500);
@@ -50,6 +101,8 @@ function App() {
     try {
       const result = await analyzeCareer(resumeText, aspirations);
       setData(result);
+      // Pre-fill image prompt
+      setImagePrompt(`A fictional movie character representing a ${result?.user_persona?.archetype} who is a ${result?.career_map?.best_fit_role}. Cinematic lighting, heroic pose.`);
       clearInterval(interval);
       setView(ViewState.DASHBOARD);
     } catch (err: any) {
@@ -70,7 +123,7 @@ function App() {
         setResumeText(text);
       } catch (error) {
         console.error("PDF Parse Error", error);
-        alert("Failed to parse PDF. Please try copying text manually or upload a different file.");
+        alert("Failed to parse PDF. Please try copying text manually.");
       } finally {
         setIsParsingPdf(false);
       }
@@ -83,6 +136,88 @@ function App() {
       reader.readAsText(file);
     }
   };
+
+  // --- Feature Handlers ---
+
+  const handlePolish = async () => {
+    if (!aspirations.trim()) return;
+    setIsPolishing(true);
+    try {
+      const polished = await quickPolishAspirations(aspirations);
+      setAspirations(polished);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsPolishing(false);
+    }
+  };
+
+  const handleMarketInsights = async () => {
+    if (!data?.career_map?.best_fit_role || !data?.parsed_data?.location) return;
+    setIsLoadingMarket(true);
+    try {
+      const insights = await getMarketInsights(data.career_map.best_fit_role, data.parsed_data.location);
+      setMarketInsights(insights);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoadingMarket(false);
+    }
+  };
+
+  const handleGenerateImage = async () => {
+    if (!imagePrompt) return;
+    setIsGeneratingImage(true);
+    try {
+      const img = await generateCareerAvatar(imagePrompt, imageSize);
+      setGeneratedImage(img);
+    } catch (e) {
+      console.error(e);
+      alert("Image generation failed.");
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const handleGenerateRoadmap = async () => {
+    if (!data) return;
+    setIsGeneratingRoadmap(true);
+    try {
+      const roadmap = await generateCustomRoadmap(
+        data.user_persona.psych_profile,
+        data.career_map.best_fit_role,
+        roadmapDuration
+      );
+      setCustomRoadmap(roadmap);
+    } catch (e) {
+      console.error(e);
+      alert("Roadmap generation failed.");
+    } finally {
+      setIsGeneratingRoadmap(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || !chatSession) return;
+    
+    const userMsg: ChatMessage = { role: 'user', text: chatInput, timestamp: Date.now() };
+    setChatMessages(prev => [...prev, userMsg]);
+    setChatInput('');
+    setIsChatLoading(true);
+
+    try {
+      const result = await chatSession.sendMessage({ message: userMsg.text });
+      const modelMsg: ChatMessage = { role: 'model', text: result.text || "I couldn't generate a response.", timestamp: Date.now() };
+      setChatMessages(prev => [...prev, modelMsg]);
+    } catch (e) {
+      console.error("Chat Error", e);
+      setChatMessages(prev => [...prev, { role: 'model', text: "Sorry, I'm having trouble connecting right now.", timestamp: Date.now() }]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
+  // --- Background ---
 
   const LiquidBackground = () => (
     <>
@@ -179,8 +314,16 @@ function App() {
 
         <div className="space-y-6 flex flex-col justify-between">
            <div className="glass-panel p-1 rounded-2xl h-full flex flex-col">
-             <div className="p-6 pb-2">
-                <label className="block text-sm font-bold text-[#00E3FF] mb-2 uppercase tracking-wider">Your Ambitions</label>
+             <div className="p-6 pb-2 flex justify-between items-center">
+                <label className="block text-sm font-bold text-[#00E3FF] uppercase tracking-wider">Your Ambitions</label>
+                <button 
+                  onClick={handlePolish}
+                  disabled={!aspirations.trim() || isPolishing}
+                  className="text-xs flex items-center gap-1 text-[#FFD700] hover:text-white transition-colors disabled:opacity-50"
+                >
+                  {isPolishing ? <Loader2 className="animate-spin" size={12}/> : <Zap size={12}/>}
+                  Instant Polish
+                </button>
              </div>
             <textarea 
               value={aspirations}
@@ -240,6 +383,79 @@ function App() {
     </div>
   );
 
+  const ChatWidget = () => (
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end pointer-events-none">
+       <AnimatePresence>
+         {isChatOpen && (
+           <motion.div
+             initial={{ opacity: 0, y: 20, scale: 0.9 }}
+             animate={{ opacity: 1, y: 0, scale: 1 }}
+             exit={{ opacity: 0, y: 20, scale: 0.9 }}
+             className="pointer-events-auto bg-black border border-white/20 shadow-2xl rounded-2xl w-80 md:w-96 h-[500px] mb-4 overflow-hidden flex flex-col"
+           >
+             <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
+                <div className="flex items-center gap-2">
+                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                   <span className="font-bold text-sm">AI Career Coach</span>
+                </div>
+                <button onClick={() => setIsChatOpen(false)} className="text-gray-400 hover:text-white"><X size={18}/></button>
+             </div>
+             
+             <div className="flex-grow p-4 overflow-y-auto custom-scrollbar space-y-4 bg-black/50">
+                {chatMessages.length === 0 && (
+                  <div className="text-center text-gray-500 text-sm mt-10">
+                    <p>Ask me anything about your career path, salary negotiation, or interview tips.</p>
+                  </div>
+                )}
+                {chatMessages.map((msg, idx) => (
+                  <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                     <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-[#00E3FF] text-black rounded-tr-none' : 'bg-white/10 text-gray-200 rounded-tl-none'}`}>
+                        {msg.text}
+                     </div>
+                  </div>
+                ))}
+                {isChatLoading && (
+                   <div className="flex justify-start">
+                     <div className="bg-white/10 p-3 rounded-2xl rounded-tl-none flex gap-1 items-center">
+                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-100"></div>
+                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+                     </div>
+                   </div>
+                )}
+                <div ref={chatEndRef} />
+             </div>
+
+             <div className="p-4 border-t border-white/10 bg-black">
+                <form 
+                  onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
+                  className="flex gap-2"
+                >
+                  <input 
+                    type="text" 
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Type a message..."
+                    className="flex-grow bg-white/5 border border-white/10 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:border-[#00E3FF]"
+                  />
+                  <button type="submit" disabled={!chatInput.trim() || isChatLoading} className="p-2 bg-[#00E3FF] rounded-full text-black hover:bg-[#33EAFF] disabled:opacity-50">
+                     <Send size={18} />
+                  </button>
+                </form>
+             </div>
+           </motion.div>
+         )}
+       </AnimatePresence>
+
+       <button 
+         onClick={() => setIsChatOpen(!isChatOpen)}
+         className="pointer-events-auto w-14 h-14 rounded-full bg-[#00E3FF] hover:bg-[#33EAFF] text-black shadow-[0_0_20px_rgba(0,227,255,0.5)] flex items-center justify-center transition-all transform hover:scale-105"
+       >
+         {isChatOpen ? <X size={24} /> : <MessageSquare size={24} />}
+       </button>
+    </div>
+  );
+
   const renderDashboard = () => {
     if (!data) return null;
 
@@ -250,12 +466,14 @@ function App() {
       { id: 'ROADMAP', icon: ListTodo, label: 'Roadmap' },
     ];
 
+    const currentRoadmap = customRoadmap || data?.prep_roadmap;
+
     return (
       <div className="min-h-screen pb-20 relative">
         <LiquidBackground />
         
         {/* Header */}
-        <header className="sticky top-0 z-50 glass-panel border-b border-white/5">
+        <header className="sticky top-0 z-40 glass-panel border-b border-white/5">
           <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
             <div className="flex items-center gap-3 font-bold text-xl tracking-tight cursor-pointer" onClick={() => setView(ViewState.LANDING)}>
               <div className="w-10 h-10 bg-gradient-to-tr from-[#FFD700] to-orange-400 rounded-xl flex items-center justify-center text-black shadow-lg shadow-orange-500/20">CP</div>
@@ -305,7 +523,7 @@ function App() {
                {activeTab === 'PERSONA' && (
                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     {/* Hero Identity */}
-                    <Card className="lg:col-span-8" accent="gold" title="Identity Snapshot">
+                    <Card className="lg:col-span-7" accent="gold" title="Identity Snapshot">
                       <h1 className="text-3xl md:text-5xl font-black mb-8 leading-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
                         {data?.user_persona?.headline || 'Your Career Identity'}
                       </h1>
@@ -316,18 +534,46 @@ function App() {
                       </div>
                     </Card>
 
-                    {/* Archetype */}
-                    <Card className="lg:col-span-4" accent="turquoise">
-                      <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                        <div className="relative mb-6">
-                           <div className="absolute inset-0 bg-[#00E3FF] blur-xl opacity-30 animate-pulse"></div>
-                           <Brain className="text-[#00E3FF] relative z-10" size={64} />
-                        </div>
-                        <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-wide">{data?.user_persona?.archetype || 'Explorer'}</h2>
-                        <div className="h-1 w-12 bg-[#00E3FF] rounded-full my-4"></div>
-                        <p className="text-sm text-gray-400">Your decision-making patterns and writing style suggest this is your dominant professional DNA.</p>
-                      </div>
-                    </Card>
+                    {/* Digital Twin (Visualizer) */}
+                    <div className="lg:col-span-5 space-y-8">
+                      <Card title="Digital Twin" accent="white" className="h-full">
+                         <div className="flex flex-col h-full">
+                            <div className="relative flex-grow min-h-[300px] bg-black/40 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center group">
+                               {generatedImage ? (
+                                 <img src={generatedImage} alt="Generated Avatar" className="w-full h-full object-cover" />
+                               ) : (
+                                 <div className="text-center p-6">
+                                   <div className="relative inline-block mb-4">
+                                     <div className="absolute inset-0 bg-[#00E3FF] blur-xl opacity-20"></div>
+                                     <Brain size={48} className="text-gray-600 relative z-10"/>
+                                   </div>
+                                   <p className="text-gray-400 text-sm mb-4">Visualize your future persona</p>
+                                   <div className="flex gap-2 justify-center">
+                                     <select 
+                                       value={imageSize} 
+                                       onChange={(e) => setImageSize(e.target.value as ImageSize)}
+                                       className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+                                     >
+                                       <option value="1K">1K</option>
+                                       <option value="2K">2K</option>
+                                       <option value="4K">4K</option>
+                                     </select>
+                                     <Button onClick={handleGenerateImage} disabled={isGeneratingImage} variant="secondary" className="py-1 px-4 text-xs h-8">
+                                       {isGeneratingImage ? <Loader2 className="animate-spin" size={14}/> : 'Generate'}
+                                     </Button>
+                                   </div>
+                                 </div>
+                               )}
+                               
+                               {/* Archetype Label Overlay */}
+                               <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-md border border-white/10 p-3 rounded-xl">
+                                  <div className="text-[#00E3FF] text-xs font-bold uppercase tracking-widest mb-1">Archetype</div>
+                                  <div className="text-white font-bold text-lg">{data?.user_persona?.archetype}</div>
+                               </div>
+                            </div>
+                         </div>
+                      </Card>
+                    </div>
 
                     {/* Full SWOT */}
                     <div className="lg:col-span-12 grid md:grid-cols-2 gap-8">
@@ -407,6 +653,7 @@ function App() {
                             color={(data?.ats_audit?.score || 0) > 70 ? '#00E3FF' : '#FFD700'} 
                             size={160}
                             strokeWidth={12}
+                            className="mx-auto"
                           />
                           <h3 className="text-3xl font-black mt-8 text-white">{data?.ats_audit?.verdict || 'N/A'}</h3>
                           <p className="text-gray-400 text-sm mt-2 uppercase tracking-widest">Resume Health Score</p>
@@ -484,18 +731,36 @@ function App() {
                      </Card>
                      
                      <div className="space-y-8">
-                        <Card className="relative overflow-hidden">
+                        {/* Market Data (Search Grounding) */}
+                        <Card className="relative overflow-hidden" title="Live Market Intelligence" accent="gold">
                            <div className="absolute right-0 top-0 p-32 bg-[#FFD700] blur-[80px] opacity-10 rounded-full pointer-events-none"></div>
-                           <p className="text-sm text-gray-500 mb-2 uppercase tracking-widest font-bold">Projected Market Value</p>
-                           <h3 className="text-5xl font-black text-white">{data?.career_map?.salary_range}</h3>
+                           {!marketInsights ? (
+                             <div className="text-center py-6">
+                               <p className="text-gray-400 text-sm mb-4">Fetch real-time salary, companies, and skill trends from Google Search.</p>
+                               <Button onClick={handleMarketInsights} disabled={isLoadingMarket} variant="primary" className="mx-auto text-sm py-2 px-6">
+                                 {isLoadingMarket ? 'Searching Google...' : 'Fetch Live Data'}
+                               </Button>
+                             </div>
+                           ) : (
+                             <div className="prose prose-invert text-sm max-h-40 overflow-y-auto">
+                                <p className="whitespace-pre-wrap">{marketInsights}</p>
+                             </div>
+                           )}
                         </Card>
 
                         <Card title="Target Companies">
                           <div className="flex flex-wrap gap-3">
                               {data?.career_map?.top_companies?.map((co, i) => (
-                                <div key={i} className="px-5 py-3 glass-panel rounded-xl font-bold text-gray-300 hover:bg-white hover:text-black transition-all cursor-pointer">
+                                <a 
+                                  key={i} 
+                                  href={`https://www.linkedin.com/company/${co.toLowerCase().replace(/\s+/g, '-')}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-5 py-3 glass-panel rounded-xl font-bold text-gray-300 hover:bg-white hover:text-black transition-all cursor-pointer flex items-center gap-2 group"
+                                >
                                   {co}
-                                </div>
+                                  <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
+                                </a>
                               ))}
                           </div>
                         </Card>
@@ -504,28 +769,28 @@ function App() {
 
                    <div className="grid md:grid-cols-3 gap-8">
                      <Card title="Skill Bridge" className="md:col-span-1 border-t-4 border-t-red-500/50">
-                        <ul className="space-y-3">
+                        <ul className="space-y-4">
                           {data?.career_map?.gap_analysis?.skill_gaps?.map((g, i) => (
-                            <li key={i} className="text-sm text-gray-300 flex items-start gap-3">
-                              <span className="w-1.5 h-1.5 bg-red-500 rounded-full mt-2"/> {g}
+                            <li key={i} className="text-sm text-gray-300 flex items-start gap-3 bg-white/5 p-3 rounded-lg">
+                              <span className="w-1.5 h-1.5 bg-red-500 rounded-full mt-2 shrink-0"/> {g}
                             </li>
                           ))}
                         </ul>
                      </Card>
                      <Card title="Experience Bridge" className="md:col-span-1 border-t-4 border-t-yellow-500/50">
-                        <ul className="space-y-3">
+                        <ul className="space-y-4">
                           {data?.career_map?.gap_analysis?.experience_gaps?.map((g, i) => (
-                            <li key={i} className="text-sm text-gray-300 flex items-start gap-3">
-                              <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2"/> {g}
+                            <li key={i} className="text-sm text-gray-300 flex items-start gap-3 bg-white/5 p-3 rounded-lg">
+                              <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 shrink-0"/> {g}
                             </li>
                           ))}
                         </ul>
                      </Card>
                      <Card title="Project Bridge" className="md:col-span-1 border-t-4 border-t-blue-500/50">
-                        <ul className="space-y-3">
+                        <ul className="space-y-4">
                           {data?.career_map?.gap_analysis?.project_gaps?.map((g, i) => (
-                            <li key={i} className="text-sm text-gray-300 flex items-start gap-3">
-                              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2"/> {g}
+                            <li key={i} className="text-sm text-gray-300 flex items-start gap-3 bg-white/5 p-3 rounded-lg">
+                              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 shrink-0"/> {g}
                             </li>
                           ))}
                         </ul>
@@ -536,83 +801,112 @@ function App() {
 
                {activeTab === 'ROADMAP' && (
                  <div className="space-y-12">
-                   {data?.prep_roadmap?.map((week, idx) => (
-                     <div key={idx} className="relative group">
-                       <div className="absolute left-[19px] top-12 bottom-[-48px] w-0.5 bg-gradient-to-b from-[#FFD700] to-transparent hidden md:block group-last:hidden"></div>
-                       
-                       <div className="md:pl-16 relative">
-                          {/* Week Badge */}
-                          <div className="hidden md:flex absolute left-0 top-0 w-10 h-10 rounded-full bg-[#FFD700] text-black font-black items-center justify-center z-10 shadow-[0_0_20px_rgba(255,215,0,0.5)]">
-                            {idx + 1}
-                          </div>
+                   {/* Custom Roadmap Generator */}
+                   <div className="flex flex-col md:flex-row justify-between items-center gap-4 glass-panel p-6 rounded-2xl">
+                      <div className="text-left">
+                        <h3 className="text-xl font-bold text-white mb-1">Custom Action Plan</h3>
+                        <p className="text-gray-400 text-sm">Select duration for a personalized week-by-week strategy.</p>
+                      </div>
+                      <div className="flex gap-4 items-center">
+                        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2">
+                           <span className="text-sm text-gray-300">Duration:</span>
+                           <select 
+                             value={roadmapDuration}
+                             onChange={(e) => setRoadmapDuration(Number(e.target.value))}
+                             className="bg-transparent text-[#FFD700] font-bold focus:outline-none cursor-pointer"
+                           >
+                             {[1, 2, 3, 4, 5, 6, 7, 8].map(w => (
+                               <option key={w} value={w} className="bg-black text-white">{w} Weeks</option>
+                             ))}
+                           </select>
+                        </div>
+                        <Button onClick={handleGenerateRoadmap} disabled={isGeneratingRoadmap} variant="primary" className="py-2 px-6">
+                          {isGeneratingRoadmap ? <Loader2 className="animate-spin" size={18}/> : 'Generate Plan'}
+                        </Button>
+                      </div>
+                   </div>
 
-                          <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
-                            <h3 className="text-3xl font-bold text-white"><span className="md:hidden text-[#FFD700] mr-2">#{idx+1}</span>{week.theme}</h3>
-                            <div className="h-px bg-white/10 flex-grow hidden md:block"></div>
-                          </div>
-                          
-                          <div className="grid lg:grid-cols-2 gap-8">
-                            <Card title="Daily Protocol" className="h-full bg-white/5">
-                              <ul className="space-y-5">
-                                {week.daily_tasks.map((task, tIdx) => (
-                                  <li key={tIdx} className="flex gap-4 text-sm text-gray-300 group/item hover:text-white transition-colors">
-                                    <div className="mt-0.5 w-5 h-5 rounded border border-gray-600 flex items-center justify-center group-hover/item:border-[#FFD700] transition-colors cursor-pointer">
-                                      <div className="w-3 h-3 bg-[#FFD700] rounded-sm opacity-0 group-active/item:opacity-100 transition-opacity"></div>
-                                    </div>
-                                    <span className="leading-relaxed">{task}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </Card>
+                   {/* Roadmap Timeline */}
+                   <div className="space-y-12">
+                     {currentRoadmap?.map((week, idx) => (
+                       <div key={idx} className="relative group">
+                         <div className="absolute left-[19px] top-12 bottom-[-48px] w-0.5 bg-gradient-to-b from-[#FFD700] to-transparent hidden md:block group-last:hidden"></div>
+                         
+                         <div className="md:pl-16 relative">
+                            {/* Week Badge */}
+                            <div className="hidden md:flex absolute left-0 top-0 w-10 h-10 rounded-full bg-[#FFD700] text-black font-black items-center justify-center z-10 shadow-[0_0_20px_rgba(255,215,0,0.5)]">
+                              {idx + 1}
+                            </div>
+
+                            <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
+                              <h3 className="text-3xl font-bold text-white"><span className="md:hidden text-[#FFD700] mr-2">#{idx+1}</span>{week.theme}</h3>
+                              <div className="h-px bg-white/10 flex-grow hidden md:block"></div>
+                            </div>
                             
-                            <div className="space-y-8">
-                              <Card title="Curated Resources" accent="turquoise">
-                                <ul className="space-y-3">
-                                  {week.resources.map((res, rIdx) => (
-                                    <li key={rIdx}>
-                                      <a 
-                                        href={`https://www.google.com/search?q=${encodeURIComponent(res)}`} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-[#00E3FF]/10 border border-transparent hover:border-[#00E3FF]/30 transition-all group/link"
-                                      >
-                                        <Search size={16} className="text-[#00E3FF]" />
-                                        <span className="text-sm font-medium text-gray-200 group-hover/link:text-white flex-grow">{res}</span>
-                                        <ExternalLink size={14} className="opacity-0 group-hover/link:opacity-100 text-[#00E3FF] transition-opacity" />
-                                      </a>
+                            <div className="grid lg:grid-cols-2 gap-8">
+                              <Card title="Daily Protocol" className="h-full bg-white/5">
+                                <ul className="space-y-5">
+                                  {week.daily_tasks.map((task: string, tIdx: number) => (
+                                    <li key={tIdx} className="flex gap-4 text-sm text-gray-300 group/item hover:text-white transition-colors">
+                                      <div className="mt-0.5 w-5 h-5 rounded border border-gray-600 flex items-center justify-center group-hover/item:border-[#FFD700] transition-colors cursor-pointer">
+                                        <div className="w-3 h-3 bg-[#FFD700] rounded-sm opacity-0 group-active/item:opacity-100 transition-opacity"></div>
+                                      </div>
+                                      <span className="leading-relaxed">{task}</span>
                                     </li>
                                   ))}
                                 </ul>
                               </Card>
                               
-                              <Card title="Key Deliverables" accent="none" className="bg-gradient-to-br from-white/5 to-transparent border-white/10">
-                                <ul className="space-y-3">
-                                  {week.deliverables.map((del, dIdx) => (
-                                    <li key={dIdx} className="text-sm text-white font-medium flex items-center gap-3">
-                                      <div className="p-1.5 rounded-full bg-[#FFD700]/20">
-                                         <Target size={14} className="text-[#FFD700]" />
-                                      </div>
-                                      {del}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </Card>
+                              <div className="space-y-8">
+                                <Card title="Curated Resources" accent="turquoise">
+                                  <ul className="space-y-3">
+                                    {week.resources.map((res: string, rIdx: number) => (
+                                      <li key={rIdx}>
+                                        <a 
+                                          href={`https://www.google.com/search?q=${encodeURIComponent(res)}`} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-[#00E3FF]/10 border border-transparent hover:border-[#00E3FF]/30 transition-all group/link"
+                                        >
+                                          <Search size={16} className="text-[#00E3FF]" />
+                                          <span className="text-sm font-medium text-gray-200 group-hover/link:text-white flex-grow">{res}</span>
+                                          <ExternalLink size={14} className="opacity-0 group-hover/link:opacity-100 text-[#00E3FF] transition-opacity" />
+                                        </a>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </Card>
+                                
+                                <Card title="Key Deliverables" accent="none" className="bg-gradient-to-br from-white/5 to-transparent border-white/10">
+                                  <ul className="space-y-3">
+                                    {week.deliverables.map((del: string, dIdx: number) => (
+                                      <li key={dIdx} className="text-sm text-white font-medium flex items-center gap-3">
+                                        <div className="p-1.5 rounded-full bg-[#FFD700]/20">
+                                           <Target size={14} className="text-[#FFD700]" />
+                                        </div>
+                                        {del}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </Card>
+                              </div>
                             </div>
-                          </div>
+                         </div>
                        </div>
-                     </div>
-                   ))}
+                     ))}
+                   </div>
                  </div>
                )}
              </motion.div>
            </AnimatePresence>
         </div>
+        <ChatWidget />
       </div>
     );
-  };
+  }
 
   return (
-    <div className="bg-black text-white min-h-screen font-sans selection:bg-[#FFD700] selection:text-black overflow-x-hidden">
+    <div className="bg-black min-h-screen text-white font-sans selection:bg-[#FFD700] selection:text-black">
       {view === ViewState.LANDING && renderLanding()}
       {view === ViewState.INPUT && renderInput()}
       {view === ViewState.PROCESSING && renderProcessing()}

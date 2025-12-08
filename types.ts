@@ -89,3 +89,11 @@ export enum ViewState {
   DASHBOARD = 'DASHBOARD',
   ERROR = 'ERROR'
 }
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
+  timestamp: number;
+}
+
+export type ImageSize = '1K' | '2K' | '4K';

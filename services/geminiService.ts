@@ -1,129 +1,129 @@
-import { GoogleGenAI, Schema } from "@google/genai";
-import { CareerPixelResponse } from "../types";
+import { GoogleGenAI, Schema, Type } from "@google/genai";
+import { CareerPixelResponse, WeekPlan } from "../types";
 
 const careerPixelSchema: Schema = {
-  type: "OBJECT",
+  type: Type.OBJECT,
   properties: {
     user_persona: {
-      type: "OBJECT",
+      type: Type.OBJECT,
       properties: {
-        headline: { type: "STRING" },
-        psych_profile: { type: "STRING" },
-        archetype: { type: "STRING" }
+        headline: { type: Type.STRING },
+        psych_profile: { type: Type.STRING },
+        archetype: { type: Type.STRING }
       },
       required: ["headline", "psych_profile", "archetype"]
     },
     parsed_data: {
-      type: "OBJECT",
+      type: Type.OBJECT,
       properties: {
-        name: { type: "STRING" },
-        email: { type: "STRING" },
-        location: { type: "STRING" },
+        name: { type: Type.STRING },
+        email: { type: Type.STRING },
+        location: { type: Type.STRING },
         education: {
-          type: "ARRAY",
+          type: Type.ARRAY,
           items: {
-            type: "OBJECT",
+            type: Type.OBJECT,
             properties: {
-              institution: { type: "STRING" },
-              degree: { type: "STRING" },
-              start_date: { type: "STRING" },
-              end_date: { type: "STRING" },
-              gpa_or_grade: { type: "STRING" }
+              institution: { type: Type.STRING },
+              degree: { type: Type.STRING },
+              start_date: { type: Type.STRING },
+              end_date: { type: Type.STRING },
+              gpa_or_grade: { type: Type.STRING }
             }
           }
         },
         experience: {
-          type: "ARRAY",
+          type: Type.ARRAY,
           items: {
-            type: "OBJECT",
+            type: Type.OBJECT,
             properties: {
-              company: { type: "STRING" },
-              role: { type: "STRING" },
-              start_date: { type: "STRING" },
-              end_date: { type: "STRING" },
-              responsibilities: { type: "ARRAY", items: { type: "STRING" } },
-              achievements: { type: "ARRAY", items: { type: "STRING" } },
-              impact_metrics: { type: "ARRAY", items: { type: "STRING" } }
+              company: { type: Type.STRING },
+              role: { type: Type.STRING },
+              start_date: { type: Type.STRING },
+              end_date: { type: Type.STRING },
+              responsibilities: { type: Type.ARRAY, items: { type: Type.STRING } },
+              achievements: { type: Type.ARRAY, items: { type: Type.STRING } },
+              impact_metrics: { type: Type.ARRAY, items: { type: Type.STRING } }
             }
           }
         },
-        projects: { type: "ARRAY", items: { type: "STRING" } },
-        skills: { type: "ARRAY", items: { type: "STRING" } },
-        certifications: { type: "ARRAY", items: { type: "STRING" } },
-        extras: { type: "ARRAY", items: { type: "STRING" } }
+        projects: { type: Type.ARRAY, items: { type: Type.STRING } },
+        skills: { type: Type.ARRAY, items: { type: Type.STRING } },
+        certifications: { type: Type.ARRAY, items: { type: Type.STRING } },
+        extras: { type: Type.ARRAY, items: { type: Type.STRING } }
       },
       required: ["name"]
     },
     ats_audit: {
-      type: "OBJECT",
+      type: Type.OBJECT,
       properties: {
-        score: { type: "NUMBER" },
-        verdict: { type: "STRING" },
+        score: { type: Type.NUMBER },
+        verdict: { type: Type.STRING },
         score_breakdown: {
-          type: "ARRAY",
+          type: Type.ARRAY,
           items: {
-            type: "OBJECT",
+            type: Type.OBJECT,
             properties: {
-              category: { type: "STRING", description: "e.g. Impact, Keywords, Format" },
-              score: { type: "NUMBER" },
-              feedback: { type: "STRING" }
+              category: { type: Type.STRING, description: "e.g. Impact, Keywords, Format" },
+              score: { type: Type.NUMBER },
+              feedback: { type: Type.STRING }
             }
           }
         },
         critical_fixes: {
-          type: "ARRAY",
+          type: Type.ARRAY,
           items: {
-            type: "OBJECT",
+            type: Type.OBJECT,
             properties: {
-              section: { type: "STRING" },
-              fix: { type: "STRING" }
+              section: { type: Type.STRING },
+              fix: { type: Type.STRING }
             }
           }
         },
-        formatting_tips: { type: "ARRAY", items: { type: "STRING" } },
-        keyword_gaps: { type: "ARRAY", items: { type: "STRING" } }
+        formatting_tips: { type: Type.ARRAY, items: { type: Type.STRING } },
+        keyword_gaps: { type: Type.ARRAY, items: { type: Type.STRING } }
       },
       required: ["score", "verdict"]
     },
     swot_analysis: {
-      type: "OBJECT",
+      type: Type.OBJECT,
       properties: {
-        strengths: { type: "ARRAY", items: { type: "STRING" } },
-        weaknesses: { type: "ARRAY", items: { type: "STRING" } },
-        opportunities: { type: "ARRAY", items: { type: "STRING" } },
-        threats: { type: "ARRAY", items: { type: "STRING" } }
+        strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+        weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
+        opportunities: { type: Type.ARRAY, items: { type: Type.STRING } },
+        threats: { type: Type.ARRAY, items: { type: Type.STRING } }
       },
       required: ["strengths", "weaknesses", "opportunities", "threats"]
     },
     career_map: {
-      type: "OBJECT",
+      type: Type.OBJECT,
       properties: {
-        best_fit_role: { type: "STRING" },
-        match_percentage: { type: "NUMBER" },
-        salary_range: { type: "STRING" },
-        why_it_fits: { type: "STRING" },
-        top_companies: { type: "ARRAY", items: { type: "STRING" } },
+        best_fit_role: { type: Type.STRING },
+        match_percentage: { type: Type.NUMBER },
+        salary_range: { type: Type.STRING },
+        why_it_fits: { type: Type.STRING },
+        top_companies: { type: Type.ARRAY, items: { type: Type.STRING } },
         gap_analysis: {
-          type: "OBJECT",
+          type: Type.OBJECT,
           properties: {
-            skill_gaps: { type: "ARRAY", items: { type: "STRING" } },
-            experience_gaps: { type: "ARRAY", items: { type: "STRING" } },
-            project_gaps: { type: "ARRAY", items: { type: "STRING" } }
+            skill_gaps: { type: Type.ARRAY, items: { type: Type.STRING } },
+            experience_gaps: { type: Type.ARRAY, items: { type: Type.STRING } },
+            project_gaps: { type: Type.ARRAY, items: { type: Type.STRING } }
           }
         }
       },
       required: ["best_fit_role", "match_percentage", "salary_range", "why_it_fits", "top_companies", "gap_analysis"]
     },
     prep_roadmap: {
-      type: "ARRAY",
+      type: Type.ARRAY,
       items: {
-        type: "OBJECT",
+        type: Type.OBJECT,
         properties: {
-          week: { type: "STRING" },
-          theme: { type: "STRING" },
-          daily_tasks: { type: "ARRAY", items: { type: "STRING" } },
-          resources: { type: "ARRAY", items: { type: "STRING" } },
-          deliverables: { type: "ARRAY", items: { type: "STRING" } }
+          week: { type: Type.STRING },
+          theme: { type: Type.STRING },
+          daily_tasks: { type: Type.ARRAY, items: { type: Type.STRING } },
+          resources: { type: Type.ARRAY, items: { type: Type.STRING } },
+          deliverables: { type: Type.ARRAY, items: { type: Type.STRING } }
         }
       }
     }
@@ -157,47 +157,164 @@ Style: Liquid, Premium, Raw, Honest, Gen-Z.
 4. ROADMAP (Actionable)
    - Resources must be specific titles of books, courses, or tools that can be searched.
 
+5. GAP ANALYSIS & TARGETS
+   - Top Companies: Suggest 6-8 specific companies.
+   - Skill/Experience/Project Bridge: Be hyper-specific. Don't say "Learn Python". Say "Build a RAG pipeline using LangChain to demonstrate AI engineering skills missing from your background."
+
+6. AVATAR PROMPT
+   - In the analysis, infer a "Fictional Character" style prompt for their persona (e.g. "A cyberpunk architect looking at a hologram city").
+
 Be direct. Be insightful. Be cool.
 `;
 
+const getApiKey = () => {
+  const key = process.env.API_KEY;
+  if (!key) throw new Error("API Key is missing.");
+  return key;
+};
+
+// Main Analysis (gemini-2.5-flash)
 export const analyzeCareer = async (resumeText: string, aspirations: string): Promise<CareerPixelResponse> => {
-  const apiKey = process.env.API_KEY;
-  
-  if (!apiKey) {
-    throw new Error("API Key is missing. Please configure process.env.API_KEY.");
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  const prompt = `RESUME TEXT:\n${resumeText}\n\nUSER ASPIRATIONS:\n${aspirations}\n\nAnalyze this. Give me the raw truth.`;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: prompt,
+    config: {
+      systemInstruction: SYSTEM_INSTRUCTION,
+      responseMimeType: "application/json",
+      responseSchema: careerPixelSchema,
+      temperature: 0.7
+    }
+  });
+
+  if (response.text) {
+    return JSON.parse(response.text) as CareerPixelResponse;
   }
+  throw new Error("Empty response from Gemini");
+};
 
-  const ai = new GoogleGenAI({ apiKey });
+// Fast Polish (gemini-2.5-flash)
+export const quickPolishAspirations = async (text: string): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: `Rewrite this career aspiration to be punchy, ambitious, and executive-ready. Max 2 sentences. Text: "${text}"`
+  });
+  return response.text || text;
+};
 
+// Search Grounding (gemini-2.5-flash with googleSearch)
+export const getMarketInsights = async (role: string, location: string): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: `Find real-time market data for the role of ${role} in ${location}. 
+    Provide:
+    1. Average Salary Range (include sources).
+    2. Top 3 Companies hiring now.
+    3. Key emerging skills required in 2025.
+    
+    Keep it concise.`,
+    config: {
+      tools: [{ googleSearch: {} }]
+    }
+  });
+  
+  // Return the text directly (Search Grounding outputs text)
+  return response.text || "Could not retrieve market data.";
+};
+
+// Deep Thinking Strategy (gemini-3-pro-preview with thinking)
+export const generateDeepStrategy = async (profile: string, goal: string): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-preview',
+    contents: `User Profile Summary: ${profile}. Goal: ${goal}.
+    Generate a deep, strategic 5-year master plan. 
+    Focus on non-obvious moves, high-leverage networking, and specific milestones.
+    Think deeply about market trends and psychological blockers.`,
+    config: {
+      thinkingConfig: { thinkingBudget: 32768 } // Max budget for pro
+    }
+  });
+  return response.text || "Strategy generation failed.";
+};
+
+// Image Generation (gemini-3-pro-image-preview)
+export const generateCareerAvatar = async (prompt: string, size: '1K' | '2K' | '4K'): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-image-preview',
+    contents: {
+      parts: [{ text: `A futuristic, professional, and inspiring digital art avatar representing this persona: ${prompt}. High quality, cinematic lighting.` }]
+    },
+    config: {
+      imageConfig: {
+        aspectRatio: "1:1",
+        imageSize: size
+      }
+    }
+  });
+
+  for (const part of response.candidates?.[0]?.content?.parts || []) {
+    if (part.inlineData) {
+      return `data:image/png;base64,${part.inlineData.data}`;
+    }
+  }
+  throw new Error("No image generated.");
+};
+
+// Chatbot (gemini-3-pro-preview)
+export const createChatSession = () => {
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  return ai.chats.create({
+    model: 'gemini-3-pro-preview',
+    config: {
+      systemInstruction: "You are a world-class, Gen-Z career coach. You are honest, strategic, and empowering. You use emojis occasionally but remain professional. Help the user with their career questions."
+    }
+  });
+};
+
+// Custom Roadmap Generation
+export const generateCustomRoadmap = async (psychProfile: string, role: string, durationWeeks: number): Promise<WeekPlan[]> => {
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
   const prompt = `
-    RESUME TEXT:
-    ${resumeText}
+    User Psych Profile: ${psychProfile}
+    Target Role: ${role}
+    Duration: ${durationWeeks} weeks.
 
-    USER ASPIRATIONS:
-    ${aspirations}
-
-    Analyze this. Give me the raw truth.
+    Generate a customized, week-by-week preparation roadmap.
+    For each week, define a Theme, Daily Tasks (specific actions), Resources (books, courses, urls), and Deliverables (tangible outcomes).
   `;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: "application/json",
-        responseSchema: careerPixelSchema,
-        temperature: 0.7
-      }
-    });
-
-    if (response.text) {
-      return JSON.parse(response.text) as CareerPixelResponse;
-    } else {
-      throw new Error("Empty response from Gemini");
+  const schema: Schema = {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        week: { type: Type.STRING },
+        theme: { type: Type.STRING },
+        daily_tasks: { type: Type.ARRAY, items: { type: Type.STRING } },
+        resources: { type: Type.ARRAY, items: { type: Type.STRING } },
+        deliverables: { type: Type.ARRAY, items: { type: Type.STRING } }
+      },
+      required: ["week", "theme", "daily_tasks", "resources", "deliverables"]
     }
-  } catch (error) {
-    console.error("Gemini Analysis Failed:", error);
-    throw error;
+  };
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: schema
+    }
+  });
+
+  if (response.text) {
+    return JSON.parse(response.text) as WeekPlan[];
   }
+  return [];
 };
