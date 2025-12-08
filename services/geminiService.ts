@@ -1,5 +1,5 @@
 import { GoogleGenAI, Schema, Type } from "@google/genai";
-import { CareerPixelResponse, WeekPlan } from "../types";
+import { CareerPixelResponse, WeekPlan, UserPreferences } from "../types";
 
 const careerPixelSchema: Schema = {
   type: Type.OBJECT,
@@ -98,10 +98,18 @@ const careerPixelSchema: Schema = {
     career_map: {
       type: Type.OBJECT,
       properties: {
-        best_fit_role: { type: Type.STRING },
-        match_percentage: { type: Type.NUMBER },
-        salary_range: { type: Type.STRING },
-        why_it_fits: { type: Type.STRING },
+        best_fit_roles: { 
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              role: { type: Type.STRING },
+              match_percentage: { type: Type.NUMBER },
+              salary_range: { type: Type.STRING },
+              why_it_fits: { type: Type.STRING }
+            }
+          }
+        },
         top_companies: { type: Type.ARRAY, items: { type: Type.STRING } },
         gap_analysis: {
           type: Type.OBJECT,
@@ -112,7 +120,7 @@ const careerPixelSchema: Schema = {
           }
         }
       },
-      required: ["best_fit_role", "match_percentage", "salary_range", "why_it_fits", "top_companies", "gap_analysis"]
+      required: ["best_fit_roles", "top_companies", "gap_analysis"]
     },
     prep_roadmap: {
       type: Type.ARRAY,
@@ -136,17 +144,16 @@ YOUR PRIMARY MISSION
 Transform cold resume text + warm user aspirations into a hyper-personalized career blueprint.
 Style: Liquid, Premium, Raw, Honest, Gen-Z.
 
-1. PSYCHOANALYSIS (Deep, Raw, Emotional)
-   - Do NOT just summarize skills. Look into their soul.
-   - What drives them? What are they afraid of?
-   - How do they make decisions? (Data vs Gut)
-   - The psych_profile string must be a substantial paragraph that feels like a therapy session for their career. It should be brutally honest yet empowering.
+1. PSYCHOANALYSIS (Minimalist, Punchy, Humanized)
+   - Do NOT list facts from the resume.
+   - Do NOT use long paragraphs. Use short, punchy sentences.
+   - Write a raw, emotional, and conversational psychoanalysis of their professional self. 
+   - Talk to them directly (e.g., "You thrive in chaos but secretly crave structure.").
+   - Reveal their hidden drivers, fears, and decision-making styles.
 
 2. ATS AUDIT (Surgical Precision)
    - Score out of 100.
-   - Provide a score_breakdown (e.g., "Impact Metrics", "Keyword Density", "Formatting", "Action Verbs") with individual scores (0-100) and specific feedback.
-   - For critical_fixes, you MUST provide specific line-by-line feedback. 
-     Example: { section: "Experience - Uber", fix: "Change 'Helped with marketing' to 'Spearheaded go-to-market strategy resulting in 20% growth'." }
+   - Provide granular critical fixes line-by-line.
 
 3. SWOT ANALYSIS
    - Strengths: What makes them dangerous (in a good way)?
@@ -154,15 +161,18 @@ Style: Liquid, Premium, Raw, Honest, Gen-Z.
    - Opportunities: What specific niche or role can they dominate?
    - Threats: AI, market saturation, skill obsolescence.
 
-4. ROADMAP (Actionable)
-   - Resources must be specific titles of books, courses, or tools that can be searched.
-
-5. GAP ANALYSIS & TARGETS
+4. CAREER MAP & BEST FIT ROLES
+   - Identify EXACTLY 3 "Best Fit Roles" based on their profile and aspirations.
+   - For each role, calculate a match percentage and estimate salary range (in INR if location is India/relevant, otherwise USD).
    - Top Companies: Suggest 6-8 specific companies.
-   - Skill/Experience/Project Bridge: Be hyper-specific. Don't say "Learn Python". Say "Build a RAG pipeline using LangChain to demonstrate AI engineering skills missing from your background."
+
+5. GAP ANALYSIS
+   - Skill/Experience/Project Bridge: Be hyper-specific. Reference specific resume details.
 
 6. AVATAR PROMPT
-   - In the analysis, infer a "Fictional Character" style prompt for their persona (e.g. "A cyberpunk architect looking at a hologram city").
+   - Infer a prompt for a "Photorealistic 3D Render" of a fictional character (from movies, shows, games) that embodies their professional spirit. 
+   - Specify gender based on resume context or name.
+   - Example: "Tony Stark working on a holographic interface, photorealistic, cinematic lighting, 8k."
 
 Be direct. Be insightful. Be cool.
 `;
@@ -173,97 +183,132 @@ const getApiKey = () => {
   return key;
 };
 
-// Main Analysis (gemini-2.5-flash)
-export const analyzeCareer = async (resumeText: string, aspirations: string): Promise<CareerPixelResponse> => {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
-  const prompt = `RESUME TEXT:\n${resumeText}\n\nUSER ASPIRATIONS:\n${aspirations}\n\nAnalyze this. Give me the raw truth.`;
-
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-      responseMimeType: "application/json",
-      responseSchema: careerPixelSchema,
-      temperature: 0.7
+// Retry helper for 503 Overloaded errors
+const callWithRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> => {
+  try {
+    return await fn();
+  } catch (error: any) {
+    const isOverloaded = error?.status === 503 || error?.code === 503 || error?.message?.includes('overloaded');
+    if (retries > 0 && isOverloaded) {
+      console.warn(`Model overloaded. Retrying in ${delay}ms... (${retries} attempts left)`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return callWithRetry(fn, retries - 1, delay * 2); // Exponential backoff
     }
-  });
-
-  if (response.text) {
-    return JSON.parse(response.text) as CareerPixelResponse;
+    throw error;
   }
-  throw new Error("Empty response from Gemini");
+};
+
+// Main Analysis (gemini-2.5-flash)
+export const analyzeCareer = async (resumeText: string, aspirations: string, preferences: UserPreferences): Promise<CareerPixelResponse> => {
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  
+  const prefString = `
+    Target Role Functions: ${preferences.targetRole}
+    Target Industries: ${preferences.targetIndustry}
+    Target Company Types: ${preferences.targetCompanyType}
+    Target Locations: ${preferences.targetLocation}
+  `;
+  
+  const prompt = `RESUME TEXT:\n${resumeText}\n\nUSER ASPIRATIONS:\n${aspirations}\n\nUSER PREFERENCES:\n${prefString}\n\nAnalyze this. Give me the raw truth.`;
+
+  return callWithRetry(async () => {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        responseMimeType: "application/json",
+        responseSchema: careerPixelSchema,
+        temperature: 0.7
+      }
+    });
+
+    if (response.text) {
+      return JSON.parse(response.text) as CareerPixelResponse;
+    }
+    throw new Error("Empty response from Gemini");
+  });
 };
 
 // Fast Polish (gemini-2.5-flash)
 export const quickPolishAspirations = async (text: string): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: getApiKey() });
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: `Rewrite this career aspiration to be punchy, ambitious, and executive-ready. Max 2 sentences. Text: "${text}"`
+  return callWithRetry(async () => {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Rewrite this career aspiration to be punchy, ambitious, and executive-ready. Max 2 sentences. Text: "${text}"`
+    });
+    return response.text || text;
   });
-  return response.text || text;
 };
 
 // Search Grounding (gemini-2.5-flash with googleSearch)
 export const getMarketInsights = async (role: string, location: string): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: getApiKey() });
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: `Find real-time market data for the role of ${role} in ${location}. 
-    Provide:
-    1. Average Salary Range (include sources).
-    2. Top 3 Companies hiring now.
-    3. Key emerging skills required in 2025.
+  return callWithRetry(async () => {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Find real-time market data for the role of ${role} in ${location}. 
+      Provide a concise summary with:
+      - Current Salary Trends
+      - Top Hiring Companies (Real-time)
+      - Hot Skills in Demand
+      
+      Format as a clean, readable paragraph or bullet points. Do not use Markdown headers.`,
+      config: {
+        tools: [{ googleSearch: {} }]
+      }
+    });
     
-    Keep it concise.`,
-    config: {
-      tools: [{ googleSearch: {} }]
-    }
+    return response.text || "Could not retrieve market data.";
   });
-  
-  // Return the text directly (Search Grounding outputs text)
-  return response.text || "Could not retrieve market data.";
 };
 
 // Deep Thinking Strategy (gemini-3-pro-preview with thinking)
 export const generateDeepStrategy = async (profile: string, goal: string): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: getApiKey() });
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
-    contents: `User Profile Summary: ${profile}. Goal: ${goal}.
-    Generate a deep, strategic 5-year master plan. 
-    Focus on non-obvious moves, high-leverage networking, and specific milestones.
-    Think deeply about market trends and psychological blockers.`,
-    config: {
-      thinkingConfig: { thinkingBudget: 32768 } // Max budget for pro
-    }
+  return callWithRetry(async () => {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
+      contents: `User Profile Summary: ${profile}. Goal: ${goal}.
+      Generate a deep, strategic 5-year master plan. 
+      Focus on non-obvious moves, high-leverage networking, and specific milestones.
+      Think deeply about market trends and psychological blockers.`,
+      config: {
+        thinkingConfig: { thinkingBudget: 16384 } // Reduced slightly to avoid frequent overloads while keeping high reasoning
+      }
+    });
+    return response.text || "Strategy generation failed.";
   });
-  return response.text || "Strategy generation failed.";
 };
 
 // Image Generation (gemini-3-pro-image-preview)
 export const generateCareerAvatar = async (prompt: string, size: '1K' | '2K' | '4K'): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: getApiKey() });
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-image-preview',
-    contents: {
-      parts: [{ text: `A futuristic, professional, and inspiring digital art avatar representing this persona: ${prompt}. High quality, cinematic lighting.` }]
-    },
-    config: {
-      imageConfig: {
-        aspectRatio: "1:1",
-        imageSize: size
+  // Enforce photorealistic 3D render style
+  const enhancedPrompt = `${prompt}. Photorealistic 3D render, Unreal Engine 5 style, volumetric lighting, 8k resolution, highly detailed, cinematic composition.`;
+  
+  return callWithRetry(async () => {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-image-preview',
+      contents: {
+        parts: [{ text: enhancedPrompt }]
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: "1:1",
+          imageSize: size
+        }
+      }
+    });
+
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:image/png;base64,${part.inlineData.data}`;
       }
     }
+    throw new Error("No image generated.");
   });
-
-  for (const part of response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) {
-      return `data:image/png;base64,${part.inlineData.data}`;
-    }
-  }
-  throw new Error("No image generated.");
 };
 
 // Chatbot (gemini-3-pro-preview)
@@ -304,17 +349,19 @@ export const generateCustomRoadmap = async (psychProfile: string, role: string, 
     }
   };
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: schema
-    }
-  });
+  return callWithRetry(async () => {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: schema
+      }
+    });
 
-  if (response.text) {
-    return JSON.parse(response.text) as WeekPlan[];
-  }
-  return [];
+    if (response.text) {
+      return JSON.parse(response.text) as WeekPlan[];
+    }
+    return [];
+  });
 };

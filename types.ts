@@ -56,11 +56,15 @@ export interface GapAnalysis {
   project_gaps: string[];
 }
 
-export interface CareerMap {
-  best_fit_role: string;
+export interface BestFitRole {
+  role: string;
   match_percentage: number;
   salary_range: string;
   why_it_fits: string;
+}
+
+export interface CareerMap {
+  best_fit_roles: BestFitRole[]; // Changed from single role to array
   top_companies: string[];
   gap_analysis: GapAnalysis;
 }
@@ -97,3 +101,10 @@ export interface ChatMessage {
 }
 
 export type ImageSize = '1K' | '2K' | '4K';
+
+export interface UserPreferences {
+  targetRole: string;
+  targetIndustry: string;
+  targetCompanyType: string;
+  targetLocation: string;
+}

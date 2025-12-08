@@ -31,20 +31,32 @@
         background: #555;
       }
       
-      /* Liquid Animation */
-      .liquid-blob {
-        position: absolute;
-        filter: blur(80px);
+      /* Space Particles Animation */
+      .space-particles {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
         z-index: -1;
-        opacity: 0.6;
-        animation: float 10s ease-in-out infinite;
+        pointer-events: none;
+        background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
       }
       
-      @keyframes float {
-        0% { transform: translate(0, 0) scale(1); }
-        33% { transform: translate(30px, -50px) scale(1.1); }
-        66% { transform: translate(-20px, 20px) scale(0.9); }
-        100% { transform: translate(0, 0) scale(1); }
+      .star {
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        background: white;
+        border-radius: 50%;
+        animation: twinkle linear infinite;
+      }
+      
+      @keyframes twinkle {
+        0% { opacity: 0; transform: translateY(0); }
+        50% { opacity: 1; }
+        100% { opacity: 0; transform: translateY(-100px); }
       }
 
       .glass-panel {
@@ -53,6 +65,16 @@
         -webkit-backdrop-filter: blur(20px);
         border: 1px solid rgba(255, 255, 255, 0.08);
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+      }
+      
+      .card-pop {
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .card-pop:hover {
+        transform: translateY(-5px) scale(1.02);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        z-index: 10;
+        border-color: rgba(255, 255, 255, 0.2);
       }
     </style>
   <script type="importmap">

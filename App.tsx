@@ -17,14 +17,14 @@ import {
   Loader2,
   ExternalLink,
   Zap,
-  BarChart2,
   Search,
   MessageSquare,
   X,
   Send,
-  Globe,
-  ImageIcon,
-  Lightbulb
+  Briefcase,
+  MapPin,
+  Building2,
+  Globe
 } from 'lucide-react';
 import { Button } from './components/Button';
 import { Card } from './components/Card';
@@ -34,12 +34,11 @@ import {
   quickPolishAspirations, 
   getMarketInsights, 
   generateCareerAvatar, 
-  generateDeepStrategy, 
   createChatSession,
   generateCustomRoadmap
 } from './services/geminiService';
 import { extractTextFromPDF } from './services/pdfService';
-import { CareerPixelResponse, ViewState, ChatMessage, ImageSize } from './types';
+import { CareerPixelResponse, ViewState, ChatMessage, ImageSize, UserPreferences, BestFitRole } from './types';
 
 function App() {
   const [view, setView] = useState<ViewState>(ViewState.LANDING);
@@ -50,7 +49,16 @@ function App() {
   const [errorMsg, setErrorMsg] = useState('');
   const [activeTab, setActiveTab] = useState<'PERSONA' | 'ATS' | 'MAP' | 'ROADMAP'>('PERSONA');
   const [isParsingPdf, setIsParsingPdf] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState('');
   
+  // User Preferences
+  const [preferences, setPreferences] = useState<UserPreferences>({
+    targetRole: '',
+    targetIndustry: '',
+    targetCompanyType: '',
+    targetLocation: ''
+  });
+
   // Feature States
   const [isPolishing, setIsPolishing] = useState(false);
   const [marketInsights, setMarketInsights] = useState<string | null>(null);
@@ -59,9 +67,7 @@ function App() {
   const [imagePrompt, setImagePrompt] = useState('');
   const [imageSize, setImageSize] = useState<ImageSize>('1K');
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [deepStrategy, setDeepStrategy] = useState<string | null>(null);
-  const [isThinking, setIsThinking] = useState(false);
-
+  
   // Roadmap States
   const [roadmapDuration, setRoadmapDuration] = useState(4); // weeks
   const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
@@ -74,6 +80,12 @@ function App() {
   const [chatSession, setChatSession] = useState<any>(null);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Constants for Dropdowns
+  const JOB_FUNCTIONS = ["Product Management", "Engineering", "Data Science", "Sales/GTM", "Marketing", "Design", "Operations", "Finance", "HR", "Strategy", "Customer Success", "Legal", "General Management"];
+  const INDUSTRIES = ["Fintech", "Edtech", "Healthtech", "E-commerce", "SaaS", "AI/ML", "Consumer Social", "Logistics", "Real Estate", "Cyber Security", "Media/Entertainment"];
+  const COMPANY_TYPES = ["Early-stage Startup", "Growth-stage Startup", "Unicorn", "MNC", "Enterprise", "FAANG", "Consulting Firm", "Investment Bank"];
+  const LOCATIONS = ["Bangalore", "Gurgaon", "Mumbai", "Hyderabad", "Pune", "Delhi NCR", "Chennai", "Noida", "Remote (India)", "Remote (Global)"];
 
   // Initialize Chat Session on Load
   useEffect(() => {
@@ -99,10 +111,10 @@ function App() {
     }, 1500);
 
     try {
-      const result = await analyzeCareer(resumeText, aspirations);
+      const result = await analyzeCareer(resumeText, aspirations, preferences);
       setData(result);
-      // Pre-fill image prompt
-      setImagePrompt(`A fictional movie character representing a ${result?.user_persona?.archetype} who is a ${result?.career_map?.best_fit_role}. Cinematic lighting, heroic pose.`);
+      // Pre-fill image prompt with inferred data or generic
+      setImagePrompt(`A fictional character representing ${result?.user_persona?.archetype} in a futuristic setting.`);
       clearInterval(interval);
       setView(ViewState.DASHBOARD);
     } catch (err: any) {
@@ -115,6 +127,8 @@ function App() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    setUploadedFileName(file.name);
 
     if (file.type === 'application/pdf') {
       setIsParsingPdf(true);
@@ -153,10 +167,10 @@ function App() {
   };
 
   const handleMarketInsights = async () => {
-    if (!data?.career_map?.best_fit_role || !data?.parsed_data?.location) return;
+    if (!data?.career_map?.best_fit_roles?.[0]?.role || !data?.parsed_data?.location) return;
     setIsLoadingMarket(true);
     try {
-      const insights = await getMarketInsights(data.career_map.best_fit_role, data.parsed_data.location);
+      const insights = await getMarketInsights(data.career_map.best_fit_roles[0].role, data.parsed_data.location);
       setMarketInsights(insights);
     } catch (e) {
       console.error(e);
@@ -185,7 +199,7 @@ function App() {
     try {
       const roadmap = await generateCustomRoadmap(
         data.user_persona.psych_profile,
-        data.career_map.best_fit_role,
+        data.career_map.best_fit_roles?.[0]?.role || "General",
         roadmapDuration
       );
       setCustomRoadmap(roadmap);
@@ -218,22 +232,29 @@ function App() {
   };
 
   // --- Background ---
-
-  const LiquidBackground = () => (
-    <>
-      <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 bg-black">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#00E3FF] rounded-full mix-blend-screen opacity-20 blur-[120px] animate-blob" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#FFD700] rounded-full mix-blend-screen opacity-10 blur-[120px] animate-blob animation-delay-2000" />
-        <div className="absolute top-[40%] left-[40%] w-[40%] h-[40%] bg-purple-600 rounded-full mix-blend-screen opacity-10 blur-[120px] animate-blob animation-delay-4000" />
-      </div>
-    </>
+  
+  const SpaceBackground = () => (
+    <div className="space-particles">
+       {Array.from({ length: 50 }).map((_, i) => (
+         <div 
+           key={i} 
+           className="star" 
+           style={{
+             left: `${Math.random() * 100}%`,
+             top: `${Math.random() * 100}%`,
+             animationDuration: `${Math.random() * 3 + 2}s`,
+             animationDelay: `${Math.random() * 5}s`
+           }} 
+         />
+       ))}
+    </div>
   );
 
   // --- Views ---
 
   const renderLanding = () => (
     <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden p-6 text-center">
-      <LiquidBackground />
+      <SpaceBackground />
 
       <motion.div 
         initial={{ opacity: 0, y: 30 }}
@@ -258,11 +279,8 @@ function App() {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-8">
           <Button onClick={() => setView(ViewState.INPUT)} className="w-full sm:w-auto text-lg px-12 py-5 shadow-[0_0_40px_-10px_rgba(255,215,0,0.5)]">
-            Analyze My Profile
+            Create Profile
             <ChevronRight size={20} />
-          </Button>
-          <Button variant="glass" className="w-full sm:w-auto text-lg px-12 py-5" onClick={() => window.open('https://ai.google.dev/', '_blank')}>
-            Powered by Gemini
           </Button>
         </div>
       </motion.div>
@@ -271,7 +289,7 @@ function App() {
 
   const renderInput = () => (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 max-w-6xl mx-auto relative">
-      <LiquidBackground />
+      <SpaceBackground />
       
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
@@ -286,51 +304,112 @@ function App() {
             We'll handle the psychology.
           </p>
           
-          <div className="glass-panel p-1 rounded-2xl">
-            <div className="relative group">
-              <textarea 
-                value={isParsingPdf ? "Scanning document structure..." : resumeText}
-                onChange={(e) => setResumeText(e.target.value)}
+          <div className="glass-panel p-8 rounded-2xl border-2 border-dashed border-white/20 hover:border-[#FFD700]/50 transition-colors relative group">
+              <input 
+                type="file" 
+                accept=".pdf,.txt,.md" 
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                onChange={handleFileUpload}
                 disabled={isParsingPdf}
-                placeholder="Paste resume text or upload PDF..."
-                className={`w-full h-80 bg-black/20 rounded-xl p-6 transition-all outline-none resize-none font-mono text-sm text-gray-300 placeholder-gray-600 focus:bg-black/40 ${isParsingPdf ? 'opacity-50' : ''}`}
               />
-              <div className="absolute bottom-6 right-6">
-                <label className={`cursor-pointer px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg hover:bg-white/20 transition-all flex items-center gap-2 text-xs font-medium border border-white/10 ${isParsingPdf ? 'pointer-events-none opacity-80' : ''}`}>
-                  {isParsingPdf ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
-                  <span>{isParsingPdf ? 'Processing...' : 'Upload PDF'}</span>
-                  <input 
-                    type="file" 
-                    accept=".pdf,.txt,.md" 
-                    className="hidden" 
-                    onChange={handleFileUpload}
-                    disabled={isParsingPdf}
-                  />
-                </label>
+              <div className="flex flex-col items-center justify-center h-48 text-center space-y-4">
+                 {isParsingPdf ? (
+                    <>
+                      <Loader2 className="animate-spin text-[#FFD700]" size={48} />
+                      <p className="text-gray-300">Extracting intelligence...</p>
+                    </>
+                 ) : uploadedFileName ? (
+                    <>
+                      <FileText className="text-[#00E3FF]" size={48} />
+                      <div>
+                         <p className="text-white font-bold">{uploadedFileName}</p>
+                         <p className="text-green-400 text-sm mt-1">Upload Successful</p>
+                      </div>
+                    </>
+                 ) : (
+                    <>
+                      <Upload className="text-gray-500 group-hover:text-white transition-colors" size={48} />
+                      <div>
+                        <p className="text-white font-medium">Drag & Drop PDF or Click to Upload</p>
+                        <p className="text-gray-500 text-sm mt-1">Supported: PDF, TXT (Max 5MB)</p>
+                      </div>
+                    </>
+                 )}
               </div>
-            </div>
           </div>
         </div>
 
         <div className="space-y-6 flex flex-col justify-between">
-           <div className="glass-panel p-1 rounded-2xl h-full flex flex-col">
-             <div className="p-6 pb-2 flex justify-between items-center">
-                <label className="block text-sm font-bold text-[#00E3FF] uppercase tracking-wider">Your Ambitions</label>
-                <button 
-                  onClick={handlePolish}
-                  disabled={!aspirations.trim() || isPolishing}
-                  className="text-xs flex items-center gap-1 text-[#FFD700] hover:text-white transition-colors disabled:opacity-50"
-                >
-                  {isPolishing ? <Loader2 className="animate-spin" size={12}/> : <Zap size={12}/>}
-                  Instant Polish
-                </button>
+           <div className="glass-panel p-6 rounded-2xl h-full flex flex-col space-y-6">
+             
+             {/* Ambitions Text */}
+             <div>
+               <div className="flex justify-between items-center mb-2">
+                  <label className="text-sm font-bold text-[#00E3FF] uppercase tracking-wider">Your Ambitions</label>
+                  <button 
+                    onClick={handlePolish}
+                    disabled={!aspirations.trim() || isPolishing}
+                    className="text-xs flex items-center gap-1 text-[#FFD700] hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    {isPolishing ? <Loader2 className="animate-spin" size={12}/> : <Zap size={12}/>}
+                    Polish
+                  </button>
+               </div>
+               <textarea 
+                  value={aspirations}
+                  onChange={(e) => setAspirations(e.target.value)}
+                  placeholder="Tell us where you want to go..."
+                  className="w-full h-24 bg-black/20 rounded-lg p-3 outline-none resize-none text-gray-200 placeholder-gray-600 focus:bg-black/40 border border-white/5 focus:border-white/20"
+                />
              </div>
-            <textarea 
-              value={aspirations}
-              onChange={(e) => setAspirations(e.target.value)}
-              placeholder="Be specific. 'I want to lead product at a Series B Fintech' or 'I want to switch from Sales to Engineering'..."
-              className="w-full flex-grow bg-transparent p-6 pt-0 outline-none resize-none text-lg text-gray-200 placeholder-gray-600 leading-relaxed"
-            />
+
+             {/* Dropdowns */}
+             <div className="grid grid-cols-2 gap-4">
+               <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Target Role</label>
+                  <select 
+                    className="w-full bg-black/20 rounded-lg p-2 text-sm text-white border border-white/5 outline-none"
+                    value={preferences.targetRole}
+                    onChange={(e) => setPreferences({...preferences, targetRole: e.target.value})}
+                  >
+                    <option value="">Optional</option>
+                    {JOB_FUNCTIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+               </div>
+               <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Industry</label>
+                  <select 
+                    className="w-full bg-black/20 rounded-lg p-2 text-sm text-white border border-white/5 outline-none"
+                    value={preferences.targetIndustry}
+                    onChange={(e) => setPreferences({...preferences, targetIndustry: e.target.value})}
+                  >
+                    <option value="">Optional</option>
+                    {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                  </select>
+               </div>
+               <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Company Type</label>
+                  <select 
+                    className="w-full bg-black/20 rounded-lg p-2 text-sm text-white border border-white/5 outline-none"
+                    value={preferences.targetCompanyType}
+                    onChange={(e) => setPreferences({...preferences, targetCompanyType: e.target.value})}
+                  >
+                    <option value="">Optional</option>
+                    {COMPANY_TYPES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+               </div>
+               <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Location</label>
+                  <select 
+                    className="w-full bg-black/20 rounded-lg p-2 text-sm text-white border border-white/5 outline-none"
+                    value={preferences.targetLocation}
+                    onChange={(e) => setPreferences({...preferences, targetLocation: e.target.value})}
+                  >
+                    <option value="">Optional</option>
+                    {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                  </select>
+               </div>
+             </div>
           </div>
 
           <Button 
@@ -356,7 +435,7 @@ function App() {
 
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center relative">
-         <LiquidBackground />
+         <SpaceBackground />
          <div className="relative">
             <div className="absolute inset-0 bg-[#FFD700] blur-[40px] opacity-20 rounded-full animate-pulse"></div>
             <motion.div 
@@ -373,7 +452,7 @@ function App() {
 
   const renderError = () => (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto relative">
-      <LiquidBackground />
+      <SpaceBackground />
       <div className="glass-panel p-8 rounded-3xl border border-red-500/30">
         <AlertTriangle className="text-red-500 mb-6 mx-auto" size={48} />
         <h2 className="text-3xl font-bold mb-4">Analysis Interrupted</h2>
@@ -470,7 +549,7 @@ function App() {
 
     return (
       <div className="min-h-screen pb-20 relative">
-        <LiquidBackground />
+        <SpaceBackground />
         
         {/* Header */}
         <header className="sticky top-0 z-40 glass-panel border-b border-white/5">
@@ -527,16 +606,17 @@ function App() {
                       <h1 className="text-3xl md:text-5xl font-black mb-8 leading-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
                         {data?.user_persona?.headline || 'Your Career Identity'}
                       </h1>
-                      <div className="glass-panel p-8 rounded-2xl bg-black/20 border border-white/5">
-                        <p className="text-lg md:text-xl leading-relaxed text-gray-200 font-light italic">
+                      <div className="glass-panel p-8 rounded-2xl bg-black/20 border border-white/5 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-[#FFD700]"></div>
+                        <p className="text-lg md:text-xl leading-relaxed text-gray-200 font-light italic font-serif opacity-90">
                           "{data?.user_persona?.psych_profile || 'Analyzing personality...'}"
                         </p>
                       </div>
                     </Card>
 
-                    {/* Digital Twin (Visualizer) */}
+                    {/* Professional Spirit (Avatar) */}
                     <div className="lg:col-span-5 space-y-8">
-                      <Card title="Digital Twin" accent="white" className="h-full">
+                      <Card title="Your Professional Spirit" accent="white" className="h-full">
                          <div className="flex flex-col h-full">
                             <div className="relative flex-grow min-h-[300px] bg-black/40 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center group">
                                {generatedImage ? (
@@ -547,7 +627,7 @@ function App() {
                                      <div className="absolute inset-0 bg-[#00E3FF] blur-xl opacity-20"></div>
                                      <Brain size={48} className="text-gray-600 relative z-10"/>
                                    </div>
-                                   <p className="text-gray-400 text-sm mb-4">Visualize your future persona</p>
+                                   <p className="text-gray-400 text-sm mb-4">Visualize your inner professional character</p>
                                    <div className="flex gap-2 justify-center">
                                      <select 
                                        value={imageSize} 
@@ -578,16 +658,16 @@ function App() {
                     {/* Full SWOT */}
                     <div className="lg:col-span-12 grid md:grid-cols-2 gap-8">
                       <Card title="Internal Factors" className="h-full">
-                        <div className="space-y-8">
+                        <div className="space-y-8 font-sans">
                           <div>
                             <h4 className="text-[#00E3FF] font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
                               <TrendingUp size={16}/> Strengths
                             </h4>
                             <div className="space-y-3">
                               {data?.swot_analysis?.strengths?.map((s, i) => (
-                                <div key={i} className="flex gap-3 text-gray-300 bg-white/5 p-3 rounded-lg border border-white/5">
-                                  <CheckCircle2 size={18} className="text-[#00E3FF] shrink-0 mt-0.5" />
-                                  <span className="text-sm">{s}</span>
+                                <div key={i} className="flex gap-3 text-gray-200 bg-white/5 p-4 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
+                                  <CheckCircle2 size={20} className="text-[#00E3FF] shrink-0 mt-0.5" />
+                                  <span className="text-base">{s}</span>
                                 </div>
                               ))}
                             </div>
@@ -598,9 +678,9 @@ function App() {
                             </h4>
                             <div className="space-y-3">
                               {data?.swot_analysis?.weaknesses?.map((s, i) => (
-                                <div key={i} className="flex gap-3 text-gray-300 bg-white/5 p-3 rounded-lg border border-white/5">
-                                  <AlertTriangle size={18} className="text-[#FFD700] shrink-0 mt-0.5" />
-                                  <span className="text-sm">{s}</span>
+                                <div key={i} className="flex gap-3 text-gray-200 bg-white/5 p-4 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
+                                  <AlertTriangle size={20} className="text-[#FFD700] shrink-0 mt-0.5" />
+                                  <span className="text-base">{s}</span>
                                 </div>
                               ))}
                             </div>
@@ -609,16 +689,16 @@ function App() {
                       </Card>
 
                       <Card title="External Factors" className="h-full" accent="none">
-                        <div className="space-y-8">
+                        <div className="space-y-8 font-sans">
                           <div>
                             <h4 className="text-green-400 font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
                               <Target size={16}/> Opportunities
                             </h4>
                             <div className="space-y-3">
                               {data?.swot_analysis?.opportunities?.map((s, i) => (
-                                <div key={i} className="flex gap-3 text-gray-300 bg-white/5 p-3 rounded-lg border border-white/5 hover:border-green-500/30 transition-colors">
-                                  <Sparkles size={18} className="text-green-400 shrink-0 mt-0.5" />
-                                  <span className="text-sm">{s}</span>
+                                <div key={i} className="flex gap-3 text-gray-200 bg-white/5 p-4 rounded-xl border border-white/5 hover:border-green-500/30 transition-colors">
+                                  <Sparkles size={20} className="text-green-400 shrink-0 mt-0.5" />
+                                  <span className="text-base">{s}</span>
                                 </div>
                               ))}
                             </div>
@@ -629,9 +709,9 @@ function App() {
                             </h4>
                             <div className="space-y-3">
                               {data?.swot_analysis?.threats?.map((s, i) => (
-                                <div key={i} className="flex gap-3 text-gray-300 bg-white/5 p-3 rounded-lg border border-white/5 hover:border-red-500/30 transition-colors">
-                                  <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5" />
-                                  <span className="text-sm">{s}</span>
+                                <div key={i} className="flex gap-3 text-gray-200 bg-white/5 p-4 rounded-xl border border-white/5 hover:border-red-500/30 transition-colors">
+                                  <AlertTriangle size={20} className="text-red-400 shrink-0 mt-0.5" />
+                                  <span className="text-base">{s}</span>
                                 </div>
                               ))}
                             </div>
@@ -716,47 +796,56 @@ function App() {
 
                {activeTab === 'MAP' && (
                  <div className="space-y-8">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                     <Card title="The Verdict" accent="turquoise">
-                        <div className="flex flex-col justify-between h-full">
-                          <div>
-                             <h2 className="text-4xl font-black text-white mb-2">{data?.career_map?.best_fit_role}</h2>
-                             <div className="flex items-center gap-3 mb-6">
-                                <span className="text-3xl font-bold text-[#00E3FF]">{data?.career_map?.match_percentage}% Match</span>
-                                <div className="h-px bg-white/20 flex-grow"></div>
+                   {/* Best Fit Roles */}
+                   <div className="space-y-6">
+                     <h2 className="text-3xl font-black text-white pl-2 border-l-4 border-[#00E3FF]">Best Fit Job Roles</h2>
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {data?.career_map?.best_fit_roles?.map((role, i) => (
+                          <div key={i} className="card-pop glass-panel p-6 rounded-2xl border border-white/10 hover:border-[#00E3FF]/50 transition-all cursor-pointer group h-full flex flex-col justify-between">
+                             <div>
+                               <div className="flex justify-between items-start mb-4">
+                                 <Briefcase size={24} className="text-[#00E3FF]" />
+                                 <span className="text-2xl font-bold text-[#FFD700]">{role.match_percentage}%</span>
+                               </div>
+                               <h3 className="text-xl font-bold text-white mb-2">{role.role}</h3>
+                               <p className="text-xs text-gray-400 mb-4">{role.salary_range}</p>
+                               <p className="text-sm text-gray-300 leading-relaxed mb-4">{role.why_it_fits}</p>
                              </div>
-                             <p className="text-gray-300 text-lg leading-relaxed">{data?.career_map?.why_it_fits}</p>
+                             <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                               <div className="h-full bg-[#00E3FF]" style={{ width: `${role.match_percentage}%` }}></div>
+                             </div>
                           </div>
-                        </div>
-                     </Card>
-                     
-                     <div className="space-y-8">
+                        ))}
+                     </div>
+                   </div>
+
+                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         {/* Market Data (Search Grounding) */}
-                        <Card className="relative overflow-hidden" title="Live Market Intelligence" accent="gold">
+                        <Card className="relative overflow-hidden h-full" title="Live Market Intelligence" accent="gold">
                            <div className="absolute right-0 top-0 p-32 bg-[#FFD700] blur-[80px] opacity-10 rounded-full pointer-events-none"></div>
                            {!marketInsights ? (
-                             <div className="text-center py-6">
-                               <p className="text-gray-400 text-sm mb-4">Fetch real-time salary, companies, and skill trends from Google Search.</p>
+                             <div className="text-center py-6 h-48 flex flex-col items-center justify-center">
+                               <p className="text-gray-400 text-sm mb-4">Fetch real-time market data based on your best fit roles.</p>
                                <Button onClick={handleMarketInsights} disabled={isLoadingMarket} variant="primary" className="mx-auto text-sm py-2 px-6">
                                  {isLoadingMarket ? 'Searching Google...' : 'Fetch Live Data'}
                                </Button>
                              </div>
                            ) : (
-                             <div className="prose prose-invert text-sm max-h-40 overflow-y-auto">
-                                <p className="whitespace-pre-wrap">{marketInsights}</p>
+                             <div className="prose prose-invert text-sm max-h-60 overflow-y-auto custom-scrollbar">
+                                <p className="whitespace-pre-wrap font-sans text-gray-200 leading-relaxed">{marketInsights}</p>
                              </div>
                            )}
                         </Card>
 
-                        <Card title="Target Companies">
+                        <Card title="Target Companies" className="h-full">
                           <div className="flex flex-wrap gap-3">
                               {data?.career_map?.top_companies?.map((co, i) => (
                                 <a 
                                   key={i} 
-                                  href={`https://www.linkedin.com/company/${co.toLowerCase().replace(/\s+/g, '-')}`}
+                                  href={`https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(co)}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="px-5 py-3 glass-panel rounded-xl font-bold text-gray-300 hover:bg-white hover:text-black transition-all cursor-pointer flex items-center gap-2 group"
+                                  className="px-5 py-3 glass-panel rounded-xl font-bold text-gray-300 hover:bg-[#0077b5] hover:text-white transition-all cursor-pointer flex items-center gap-2 group border border-white/5"
                                 >
                                   {co}
                                   <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
@@ -764,37 +853,57 @@ function App() {
                               ))}
                           </div>
                         </Card>
-                     </div>
                    </div>
 
-                   <div className="grid md:grid-cols-3 gap-8">
-                     <Card title="Skill Bridge" className="md:col-span-1 border-t-4 border-t-red-500/50">
-                        <ul className="space-y-4">
-                          {data?.career_map?.gap_analysis?.skill_gaps?.map((g, i) => (
-                            <li key={i} className="text-sm text-gray-300 flex items-start gap-3 bg-white/5 p-3 rounded-lg">
-                              <span className="w-1.5 h-1.5 bg-red-500 rounded-full mt-2 shrink-0"/> {g}
-                            </li>
-                          ))}
-                        </ul>
-                     </Card>
-                     <Card title="Experience Bridge" className="md:col-span-1 border-t-4 border-t-yellow-500/50">
-                        <ul className="space-y-4">
-                          {data?.career_map?.gap_analysis?.experience_gaps?.map((g, i) => (
-                            <li key={i} className="text-sm text-gray-300 flex items-start gap-3 bg-white/5 p-3 rounded-lg">
-                              <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 shrink-0"/> {g}
-                            </li>
-                          ))}
-                        </ul>
-                     </Card>
-                     <Card title="Project Bridge" className="md:col-span-1 border-t-4 border-t-blue-500/50">
-                        <ul className="space-y-4">
-                          {data?.career_map?.gap_analysis?.project_gaps?.map((g, i) => (
-                            <li key={i} className="text-sm text-gray-300 flex items-start gap-3 bg-white/5 p-3 rounded-lg">
-                              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 shrink-0"/> {g}
-                            </li>
-                          ))}
-                        </ul>
-                     </Card>
+                   {/* Gap Analysis */}
+                   <div className="space-y-6">
+                     <h2 className="text-3xl font-black text-white pl-2 border-l-4 border-[#FFD700]">The Bridge</h2>
+                     <div className="grid md:grid-cols-3 gap-8">
+                       <motion.div 
+                         whileHover={{ y: -5 }}
+                         className="glass-panel p-6 rounded-2xl border-t-4 border-t-red-500/80 bg-gradient-to-b from-white/5 to-transparent"
+                       >
+                          <h3 className="text-lg font-bold text-red-400 mb-4 flex items-center gap-2"><Brain size={18}/> Skill Gaps</h3>
+                          <ul className="space-y-4">
+                            {data?.career_map?.gap_analysis?.skill_gaps?.map((g, i) => (
+                              <li key={i} className="text-sm text-gray-300 flex items-start gap-3">
+                                <span className="w-1.5 h-1.5 bg-red-500 rounded-full mt-2 shrink-0"/> 
+                                <span className="leading-snug">{g}</span>
+                              </li>
+                            ))}
+                          </ul>
+                       </motion.div>
+                       
+                       <motion.div 
+                         whileHover={{ y: -5 }}
+                         className="glass-panel p-6 rounded-2xl border-t-4 border-t-yellow-500/80 bg-gradient-to-b from-white/5 to-transparent"
+                       >
+                          <h3 className="text-lg font-bold text-yellow-400 mb-4 flex items-center gap-2"><Briefcase size={18}/> Experience Gaps</h3>
+                          <ul className="space-y-4">
+                            {data?.career_map?.gap_analysis?.experience_gaps?.map((g, i) => (
+                              <li key={i} className="text-sm text-gray-300 flex items-start gap-3">
+                                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 shrink-0"/> 
+                                <span className="leading-snug">{g}</span>
+                              </li>
+                            ))}
+                          </ul>
+                       </motion.div>
+
+                       <motion.div 
+                         whileHover={{ y: -5 }}
+                         className="glass-panel p-6 rounded-2xl border-t-4 border-t-blue-500/80 bg-gradient-to-b from-white/5 to-transparent"
+                       >
+                          <h3 className="text-lg font-bold text-blue-400 mb-4 flex items-center gap-2"><Building2 size={18}/> Project Gaps</h3>
+                          <ul className="space-y-4">
+                            {data?.career_map?.gap_analysis?.project_gaps?.map((g, i) => (
+                              <li key={i} className="text-sm text-gray-300 flex items-start gap-3">
+                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 shrink-0"/> 
+                                <span className="leading-snug">{g}</span>
+                              </li>
+                            ))}
+                          </ul>
+                       </motion.div>
+                     </div>
                    </div>
                  </div>
                )}
